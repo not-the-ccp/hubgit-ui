@@ -28,3 +28,9 @@ from `HUBGIT_GITHUB_CREDENTIAL_KEY_FILE`; they are never returned by the API.
 Access can be allowed for any authorized user or restricted by immutable GitHub
 user IDs, active organization memberships, and active team memberships. A
 membership lookup failure denies login.
+
+The first GitHub repository port maps authenticated repository lists, repository
+details, and Git trees into the same OpenAPI objects as the mock adapter. Expired
+user tokens rotate before a provider read. Unsupported GitHub collaboration
+operations return `capability.unsupported`, and a GitHub deployment never falls
+back to mock repository data.

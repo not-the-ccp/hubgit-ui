@@ -30,7 +30,7 @@ async def dashboard(
     page = repositories[start : start + limit]
     return {
         "repositories": _page(page, start, len(repositories)),
-        "activity": [
+        "activity": [] if request.app.state.repository_provider.provider_name != "mock" else [
             {
                 "id": "activity_mock_push",
                 "kind": "commit",
@@ -161,7 +161,11 @@ async def search(
             or needle in candidate.display_name.casefold()
         )
 
-    if result_type == "code" and needle in "provider-neutral git frontend":
+    if (
+        request.app.state.repository_provider.provider_name == "mock"
+        and result_type == "code"
+        and needle in "provider-neutral git frontend"
+    ):
         results.append(
             {
                 "kind": "code",

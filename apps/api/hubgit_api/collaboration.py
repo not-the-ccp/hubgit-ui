@@ -20,7 +20,20 @@ from .providers import MockRepositoryProvider, RepositoryNotFoundError
 from .schemas import CommentInput, IssueInput, MergeInput, PullInput, ReviewInput
 from .security import ProblemError, get_db, optional_user, require_csrf
 
-router = APIRouter(prefix="/api/v1")
+
+def require_collaboration_capability(request: Request) -> None:
+    if request.app.state.repository_provider.provider_name != "mock":
+        raise ProblemError(
+            501,
+            "Capability unsupported",
+            "capability.unsupported",
+            "The configured provider adapter does not support this collaboration operation.",
+        )
+
+
+router = APIRouter(
+    prefix="/api/v1", dependencies=[Depends(require_collaboration_capability)]
+)
 
 _FIXTURE_TIME = "2026-08-29T12:00:00+00:00"
 _HEAD_SHA = "b21bd771e53b4d2c6f4a88f1ca8e218c17ab0042"

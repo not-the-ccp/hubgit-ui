@@ -47,6 +47,8 @@ class GitHubAuthPort(Protocol):
 
     async def exchange_code(self, code: str) -> GitHubCredentials: ...
 
+    async def refresh_credentials(self, refresh_token: str) -> GitHubCredentials: ...
+
     async def identity(self, access_token: str) -> GitHubIdentity: ...
 
     async def organization_membership(self, access_token: str, organization: str) -> bool: ...
@@ -147,18 +149,13 @@ class GitHubAuthClient:
         )
         return f"{self.web_base_url}/login/oauth/authorize?{query}"
 
-    async def exchange_code(self, code: str) -> GitHubCredentials:
+    async def _token_request(self, data: dict[str, str]) -> GitHubCredentials:
         try:
             async with httpx.AsyncClient(transport=self._transport, timeout=15.0) as client:
                 response = await client.post(
                     f"{self.web_base_url}/login/oauth/access_token",
                     headers={"Accept": "application/json", "User-Agent": "HubGit/0.1"},
-                    data={
-                        "client_id": self.client_id,
-                        "client_secret": self.client_secret,
-                        "code": code,
-                        "redirect_uri": self.redirect_uri,
-                    },
+                    data={"client_id": self.client_id, "client_secret": self.client_secret, **data},
                 )
         except httpx.HTTPError as exc:
             raise GitHubAuthError("GitHub token exchange was unavailable.") from exc
@@ -174,6 +171,14 @@ class GitHubAuthClient:
             expires_at=_future(body.get("expires_in")),
             refresh_token=body.get("refresh_token") if isinstance(body.get("refresh_token"), str) else None,
             refresh_expires_at=_future(body.get("refresh_token_expires_in")),
+        )
+
+    async def exchange_code(self, code: str) -> GitHubCredentials:
+        return await self._token_request({"code": code, "redirect_uri": self.redirect_uri})
+
+    async def refresh_credentials(self, refresh_token: str) -> GitHubCredentials:
+        return await self._token_request(
+            {"grant_type": "refresh_token", "refresh_token": refresh_token}
         )
 
     async def _get(self, path: str, access_token: str) -> httpx.Response:

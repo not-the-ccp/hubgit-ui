@@ -7,6 +7,7 @@ import binascii
 from contextlib import asynccontextmanager
 from typing import Annotated, AsyncIterator
 
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,9 +21,18 @@ from .collaboration import router as collaboration_router, seed_collaboration
 from .database import Database
 from .discovery import router as discovery_router
 from .github_auth import CredentialCipher, GitHubAuthClient, GitHubAuthPort
+from .github_provider import GitHubRepositoryProvider
 from .models import Session, User
 from .provider_auth_routes import router as provider_auth_router
-from .providers import MockRepositoryProvider, RepositoryNotFoundError, RepositoryProvider
+from .providers import (
+    MockRepositoryProvider,
+    ProviderAuthenticationError,
+    ProviderRateLimitedError,
+    ProviderUnavailableError,
+    RepositoryNotFoundError,
+    RepositoryProvider,
+    UnavailableRepositoryProvider,
+)
 from .schemas import AuthMethods, InstanceMeta, LoginInput
 from .security import ProblemError, current_session, get_db, hash_password, new_session, optional_user, require_csrf, require_user, settings, token_hash, verify_password
 
@@ -138,6 +148,7 @@ def create_app(
     config: Settings | None = None,
     provider: RepositoryProvider | None = None,
     github_auth: GitHubAuthPort | None = None,
+    github_transport: httpx.AsyncBaseTransport | None = None,
 ) -> FastAPI:
     """Create an independently configurable ASGI application."""
     app_settings = config or Settings()
@@ -147,13 +158,28 @@ def create_app(
         database = Database(app_settings.database_url)
         app.state.database = database
         app.state.settings = app_settings
-        app.state.repository_provider = provider or MockRepositoryProvider()
         app.state.github_auth_client = None
         app.state.credential_cipher = None
         if app_settings.github_configured:
             app.state.github_auth_client = github_auth or GitHubAuthClient(app_settings)
             app.state.credential_cipher = CredentialCipher(
                 app_settings.github_credential_key_file  # type: ignore[arg-type]
+            )
+        if provider is not None:
+            app.state.repository_provider = provider
+        elif app_settings.provider == "mock":
+            app.state.repository_provider = MockRepositoryProvider()
+        elif app.state.github_auth_client and app.state.credential_cipher:
+            app.state.repository_provider = GitHubRepositoryProvider(
+                app_settings,
+                database,
+                app.state.credential_cipher,
+                app.state.github_auth_client,
+                github_transport,
+            )
+        else:
+            app.state.repository_provider = UnavailableRepositoryProvider(
+                app_settings.provider
             )
         await database.create_all()
         await _seed_mock_user(database, app_settings)
@@ -174,6 +200,42 @@ def create_app(
     @app.exception_handler(ProblemError)
     async def problem_error(request: Request, exc: ProblemError) -> JSONResponse:
         return _problem(request, exc.status_code, exc.title, exc.code, exc.detail)
+
+    @app.exception_handler(ProviderAuthenticationError)
+    async def provider_authentication_error(
+        request: Request, exc: ProviderAuthenticationError
+    ) -> JSONResponse:
+        return _problem(
+            request,
+            401,
+            "Provider authorization required",
+            "provider.authorization_required",
+            "Sign in with the configured provider to continue.",
+        )
+
+    @app.exception_handler(ProviderRateLimitedError)
+    async def provider_rate_limited_error(
+        request: Request, exc: ProviderRateLimitedError
+    ) -> JSONResponse:
+        return _problem(
+            request,
+            429,
+            "Provider rate limit reached",
+            "provider.rate_limited",
+            "The provider rate limit is exhausted. Try again later.",
+        )
+
+    @app.exception_handler(ProviderUnavailableError)
+    async def provider_unavailable_error(
+        request: Request, exc: ProviderUnavailableError
+    ) -> JSONResponse:
+        return _problem(
+            request,
+            503,
+            "Provider unavailable",
+            "provider.unavailable",
+            "The configured provider is temporarily unavailable.",
+        )
 
     @app.exception_handler(HTTPException)
     async def http_error(request: Request, exc: HTTPException) -> JSONResponse:
@@ -210,7 +272,8 @@ def create_app(
 
     @app.get("/api/v1/capabilities")
     async def capabilities(request: Request) -> dict:
-        return {"provider": request.app.state.repository_provider.provider_name, "version": "1", "features": {"issues": True, "pullRequests": True, "releases": False, "wiki": False, "discussions": False, "projects": False, "actions": False, "security": False, "insights": False, "webhooks": False, "repositoryRules": False, "serverSentEvents": False}, "limits": {"maxPageSize": 100, "maxUploadBytes": 0}}
+        mock_collaboration = request.app.state.repository_provider.provider_name == "mock"
+        return {"provider": request.app.state.repository_provider.provider_name, "version": "1", "features": {"issues": mock_collaboration, "pullRequests": mock_collaboration, "releases": False, "wiki": False, "discussions": False, "projects": False, "actions": False, "security": False, "insights": False, "webhooks": False, "repositoryRules": False, "serverSentEvents": False}, "limits": {"maxPageSize": 100, "maxUploadBytes": 0}}
 
     @app.get("/api/v1/auth/methods", response_model=AuthMethods, response_model_by_alias=True)
     async def auth_methods(config: Settings = Depends(settings)) -> AuthMethods:

@@ -6,9 +6,10 @@ clean-room implementation, a deterministic mock provider, and a generic REST
 contract that can also be implemented by GitHub, Forgejo, Gitea, or another Git
 service.
 
-The first development milestone is a broad mock-backed application. GitHub is
-the first planned real provider for private self-hosting, while the application
-ports remain provider-neutral. Deployed instances can replace the product name,
+The first development milestone is a broad mock-backed application. The initial
+GitHub adapter now implements redirect-only login plus repository list, detail,
+and tree reads; all other GitHub feature families remain capability-gated while
+their provider-neutral implementations are built. Deployed instances can replace the product name,
 artwork, colors, authentication explanation, and policy links; safe defaults
 retain the original HubGit identity and redirect-only provider authentication.
 
@@ -24,8 +25,9 @@ retain the original HubGit identity and redirect-only provider authentication.
 
 HubGit is under active construction and is not ready for public deployment.
 Private repository caching and real-provider credentials require the same care
-as a local Git clone. Cached private reads are authorization-aware and available
-offline only during a bounded window; offline mutations are never supported.
+as a local Git clone. The offline private cache is not implemented yet; its
+contract requires authorization-aware reads during a bounded window and never
+permits offline mutations.
 Operators should initially run HubGit on a trusted network or behind an
 access-controlled reverse proxy. See [deployment and operations](docs/deployment-and-operations.md).
 

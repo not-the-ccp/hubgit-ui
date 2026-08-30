@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+import json
+from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 import httpx
 import pytest
 from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
+from jsonschema import Draft202012Validator
+from referencing import Registry, Resource
+from referencing.jsonschema import DRAFT202012
 
 from hubgit_api.config import Settings
 from hubgit_api.github_auth import (
@@ -18,11 +24,29 @@ from hubgit_api.github_auth import (
 from hubgit_api.main import create_app
 
 
+OPENAPI = json.loads(
+    (Path(__file__).parents[3] / "packages/contracts/openapi.json").read_text()
+)
+REGISTRY = Registry().with_resource(
+    "urn:hubgit:openapi",
+    Resource.from_contents(OPENAPI, default_specification=DRAFT202012),
+)
+
+
+def validate_contract(schema_name: str, payload: object) -> None:
+    Draft202012Validator(
+        {"$ref": f"urn:hubgit:openapi#/components/schemas/{schema_name}"},
+        registry=REGISTRY,
+    ).validate(payload)
+
+
 @dataclass
 class FakeGitHubAuth:
     organizations: dict[str, bool] | None = None
     teams: dict[str, bool] | None = None
     membership_unavailable: bool = False
+    expired_credentials: bool = False
+    refresh_calls: int = 0
 
     def authorization_url(self, state: str) -> str:
         return f"https://github.test/login/oauth/authorize?client_id=test-client&state={state}"
@@ -32,9 +56,21 @@ class FakeGitHubAuth:
             raise AssertionError("unexpected authorization code")
         return GitHubCredentials(
             access_token="ghu_private-access-token",
-            expires_at=None,
+            expires_at=(datetime.now(timezone.utc) - timedelta(minutes=1))
+            if self.expired_credentials
+            else None,
             refresh_token="ghr_private-refresh-token",
-            refresh_expires_at=None,
+            refresh_expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+        )
+
+    async def refresh_credentials(self, refresh_token: str) -> GitHubCredentials:
+        assert refresh_token == "ghr_private-refresh-token"
+        self.refresh_calls += 1
+        return GitHubCredentials(
+            access_token="ghu_rotated-access-token",
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=8),
+            refresh_token="ghr_rotated-refresh-token",
+            refresh_expires_at=datetime.now(timezone.utc) + timedelta(days=180),
         )
 
     async def identity(self, access_token: str) -> GitHubIdentity:
@@ -204,6 +240,162 @@ def test_github_all_policy_requires_every_configured_rule(tmp_path):
             follow_redirects=False,
         )
         assert response.status_code == 302
+
+
+def test_github_repository_reads_are_canonical_and_require_provider_session(tmp_path):
+    repository = {
+        "id": 99,
+        "owner": {
+            "id": 42,
+            "login": "trusted-org",
+            "type": "Organization",
+            "avatar_url": "https://avatars.example.test/org",
+        },
+        "name": "private-repo",
+        "full_name": "trusted-org/private-repo",
+        "description": "Private provider data",
+        "visibility": "private",
+        "default_branch": "main",
+        "size": 12,
+        "archived": False,
+        "fork": False,
+        "parent": None,
+        "language": "Python",
+        "license": {"spdx_id": "MIT"},
+        "topics": ["hubgit"],
+        "permissions": {"pull": True, "triage": True, "push": True, "maintain": True, "admin": False},
+        "stargazers_count": 5,
+        "forks_count": 2,
+        "subscribers_count": 3,
+        "open_issues_count": 4,
+        "clone_url": "https://github.test/trusted-org/private-repo.git",
+        "ssh_url": "git@github.test:trusted-org/private-repo.git",
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-08-30T12:00:00Z",
+        "pushed_at": "2026-08-30T11:00:00Z",
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["Authorization"] == "Bearer ghu_private-access-token"
+        path = request.url.path
+        if path == "/user/repos":
+            return httpx.Response(200, json=[repository])
+        if path == "/repos/trusted-org/private-repo":
+            return httpx.Response(200, json=repository)
+        if path == "/repos/trusted-org/private-repo/commits/main":
+            return httpx.Response(
+                200,
+                json={
+                    "sha": "a" * 40,
+                    "commit": {
+                        "message": "Provider commit",
+                        "author": {
+                            "name": "Octo User",
+                            "email": "octo@example.test",
+                            "date": "2026-08-30T11:00:00Z",
+                        },
+                        "tree": {"sha": "root-tree"},
+                    },
+                },
+            )
+        if path == "/repos/trusted-org/private-repo/git/trees/root-tree":
+            return httpx.Response(
+                200,
+                json={
+                    "sha": "root-tree",
+                    "tree": [
+                        {"path": "README.md", "mode": "100644", "type": "blob", "sha": "readme", "size": 20},
+                        {"path": "src", "mode": "040000", "type": "tree", "sha": "src-tree"},
+                    ],
+                },
+            )
+        if path == "/repos/trusted-org/private-repo/git/trees/src-tree":
+            return httpx.Response(
+                200,
+                json={
+                    "sha": "src-tree",
+                    "tree": [
+                        {"path": "main.py", "mode": "100755", "type": "blob", "sha": "main", "size": 30}
+                    ],
+                },
+            )
+        return httpx.Response(404)
+
+    config = github_settings(tmp_path)
+    transport = httpx.MockTransport(handler)
+    with TestClient(
+        create_app(config, github_auth=FakeGitHubAuth(), github_transport=transport)
+    ) as client:
+        anonymous = client.get("/api/v1/repositories")
+        assert anonymous.status_code == 401
+        assert anonymous.json()["code"] == "provider.authorization_required"
+
+        state = begin(client)
+        client.get(
+            "/api/v1/auth/providers/github/callback",
+            params={"code": "valid-code", "state": state},
+            follow_redirects=False,
+        )
+        listing = client.get("/api/v1/repositories").json()
+        assert listing["totalCount"] == 1
+        assert listing["items"][0]["id"] == "github-repository-99"
+        assert listing["items"][0]["owner"]["kind"] == "organization"
+        assert listing["items"][0]["freshness"]["provider"] == "github"
+        validate_contract("Repository", listing["items"][0])
+        capabilities = client.get("/api/v1/capabilities").json()
+        assert capabilities["features"]["issues"] is False
+        unsupported = client.get(
+            "/api/v1/repositories/trusted-org/private-repo/issues"
+        )
+        assert unsupported.status_code == 501
+        assert unsupported.json()["code"] == "capability.unsupported"
+
+        detail = client.get("/api/v1/repositories/trusted-org/private-repo").json()
+        assert detail["permissions"]["write"] is True
+        assert "access_token" not in str(detail)
+
+        root = client.get(
+            "/api/v1/repositories/trusted-org/private-repo/tree/main"
+        ).json()
+        assert [item["kind"] for item in root["entries"]] == ["file", "directory"]
+        assert root["commit"]["message"] == "Provider commit"
+        validate_contract("GitTree", root)
+        child = client.get(
+            "/api/v1/repositories/trusted-org/private-repo/tree/main",
+            params={"path": "src"},
+        ).json()
+        assert child["sha"] == "src-tree"
+        assert child["entries"][0]["path"] == "src/main.py"
+
+
+def test_expired_github_credentials_rotate_before_repository_reads(tmp_path):
+    provider_auth = FakeGitHubAuth(expired_credentials=True)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/user/repos"
+        assert request.headers["Authorization"] == "Bearer ghu_rotated-access-token"
+        return httpx.Response(200, json=[])
+
+    config = github_settings(tmp_path)
+    with TestClient(
+        create_app(
+            config,
+            github_auth=provider_auth,
+            github_transport=httpx.MockTransport(handler),
+        )
+    ) as client:
+        state = begin(client)
+        client.get(
+            "/api/v1/auth/providers/github/callback",
+            params={"code": "valid-code", "state": state},
+            follow_redirects=False,
+        )
+        assert client.get("/api/v1/repositories").status_code == 200
+        assert provider_auth.refresh_calls == 1
+
+    database_bytes = (tmp_path / "github.db").read_bytes()
+    assert b"ghu_rotated-access-token" not in database_bytes
+    assert b"ghr_rotated-refresh-token" not in database_bytes
 
 
 @pytest.mark.asyncio

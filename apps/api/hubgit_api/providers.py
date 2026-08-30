@@ -13,6 +13,18 @@ class RepositoryNotFoundError(LookupError):
     """The requested repository, ref, or tree path does not exist."""
 
 
+class ProviderAuthenticationError(PermissionError):
+    """The viewer has no usable credential for the configured provider."""
+
+
+class ProviderUnavailableError(ConnectionError):
+    """The provider could not produce a safe canonical response."""
+
+
+class ProviderRateLimitedError(ProviderUnavailableError):
+    """The provider rejected a request because its rate limit was exhausted."""
+
+
 class RepositoryProvider(Protocol):
     """Minimum provider surface needed by the first application slice."""
 
@@ -21,6 +33,24 @@ class RepositoryProvider(Protocol):
     async def get_repository(self, owner: str, repo: str, *, viewer: User | None) -> dict: ...
 
     async def get_tree(self, owner: str, repo: str, ref: str, path: str, *, viewer: User | None) -> dict: ...
+
+
+@dataclass(frozen=True)
+class UnavailableRepositoryProvider:
+    """Prevent a configured real provider from silently falling back to mock data."""
+
+    provider_name: str
+
+    async def list_repositories(self, *, query: str | None, viewer: User | None) -> list[dict]:
+        raise ProviderUnavailableError("The configured provider is unavailable.")
+
+    async def get_repository(self, owner: str, repo: str, *, viewer: User | None) -> dict:
+        raise ProviderUnavailableError("The configured provider is unavailable.")
+
+    async def get_tree(
+        self, owner: str, repo: str, ref: str, path: str, *, viewer: User | None
+    ) -> dict:
+        raise ProviderUnavailableError("The configured provider is unavailable.")
 
 
 _COMMIT = {

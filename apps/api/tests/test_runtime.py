@@ -189,6 +189,9 @@ def test_branding_and_provider_login_are_deployment_configurable(tmp_path):
                 "supportsRegistration": True,
             }
         ]
+        unavailable = test_client.get("/api/v1/repositories")
+        assert unavailable.status_code == 503
+        assert unavailable.json()["code"] == "provider.unavailable"
 
 
 def test_unexpected_errors_do_not_disclose_provider_secrets(tmp_path):
