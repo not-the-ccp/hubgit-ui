@@ -7,7 +7,7 @@ HubGit must protect local accounts, provider credentials, private repository dat
 Primary objectives:
 
 - Never transmit HubGit credentials to GitHub or any unconfigured external provider.
-- Never request or store a real provider password, passkey, recovery code, session cookie, or personal access token through an authentication screen. GitHub connections are redirect-only OAuth authorization-code flows with PKCE.
+- Never request or store a real provider password, passkey, recovery code, session cookie, or personal access token through an authentication screen. GitHub connections are redirect-only OAuth authorization-code flows with single-use state validation.
 - Keep provider credentials server-side, encrypted at rest, scoped, revocable, and absent from logs and browser responses.
 - Prevent private-resource discovery through status, search, counts, timing, errors, events, or caches.
 - Permit cached private reads only for a bounded authorization window; never permit offline mutations or a mutation queue.
@@ -65,8 +65,8 @@ Every authentication, registration, recovery, second-factor, and provider-
 connection route identifies the configured product and explains whether the
 operation is a local HubGit sign-in or a provider redirect. Forms accept only
 HubGit-local credentials. A GitHub connection is redirect-only: the API creates
-an OAuth authorization request, validates state/nonce on callback, and exchanges
-the code server-side with PKCE. No HubGit form accepts a GitHub password, token,
+an OAuth authorization request, validates single-use state on callback, and exchanges
+the code server-side. No HubGit form accepts a GitHub password, token,
 passkey, recovery code, session cookie, SSH key, or OAuth device code.
 
 No credential-page form action, image beacon, analytics call, font request,
@@ -80,7 +80,7 @@ outbound host, password-manager identifier, and redirect destination.
 
 | ID | Threat | Impact | Required controls | Verification |
 | --- | --- | --- | --- | --- |
-| AUTH-01 | Configured branding or provider copy is mistaken for a provider login and captures real credentials. | Critical credential compromise and user deception. | Safe HubGit defaults, explicit configured-product identity, local-only account wording, redirect-only GitHub OAuth with PKCE, no provider password/token fields, no unapproved third-party requests. | Playwright auth-route matrix and outbound-host/redirect assertions. |
+| AUTH-01 | Configured branding or provider copy is mistaken for a provider login and captures real credentials. | Critical credential compromise and user deception. | Safe HubGit defaults, explicit configured-product identity, local-only account wording, redirect-only GitHub OAuth, no provider password/token fields, no unapproved third-party requests. | Playwright auth-route matrix and outbound-host/redirect assertions. |
 | AUTH-02 | Session theft through XSS or insecure cookies. | Account takeover. | HTTP-only, Secure production cookie; SameSite; CSP; output encoding; sanitized Markdown; no tokens in local/session storage. | Cookie/header tests, XSS corpus, CSP test. |
 | AUTH-03 | CSRF performs issue, merge, settings, or admin mutations. | Unauthorized state change. | Per-session CSRF value, Origin allowlist, SameSite cookie, unsafe-method enforcement, no state-changing GET. | Cross-origin integration tests. |
 | AUTH-04 | Login, recovery, or registration enumerates accounts. | Privacy loss and targeted attack. | Uniform outward response, bounded timing, rate limits keyed by network and account, no identity in logs. | Enumeration timing/status tests. |

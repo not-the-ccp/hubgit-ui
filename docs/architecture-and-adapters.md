@@ -149,7 +149,7 @@ The mock adapter uses local accounts and Argon2 password hashes. A future provid
 - A provider token entered on a dedicated provider-connection page and encrypted at rest.
 - An administrator-configured service credential plus mapped local identity, only when the provider and deployment policy permit impersonation safely.
 
-Provider passwords are not an accepted connection method. When GitHub authentication is enabled, it is redirect-only: the API starts a server-side OAuth authorization-code flow with PKCE, validates state and nonce, and exchanges the code at the provider. HubGit forms never collect a GitHub password, token, passkey, recovery code, session cookie, SSH key, or OAuth device code. Return paths are same-origin relative paths selected from an allowlist.
+Provider passwords are not an accepted connection method. When GitHub authentication is enabled, it is redirect-only: the API starts a server-side OAuth authorization-code flow, validates a short-lived single-use state, and exchanges the code at the provider. HubGit forms never collect a GitHub password, token, passkey, recovery code, session cookie, SSH key, or OAuth device code. Return paths are application-local relative paths. PKCE is used for adapters whose documented authorization flow supports it; GitHub's current GitHub App web flow does not advertise PKCE parameters.
 
 Branding configuration cannot change this authentication boundary. A custom
 authentication explanation must identify the configured provider and local

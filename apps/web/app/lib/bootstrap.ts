@@ -96,7 +96,7 @@ export function toHubGitAppData(
         mode: 'provider',
         label: provider.displayName,
         providerName: provider.displayName,
-        authorizationPath: `/api/v1/auth/providers/${encodeURIComponent(provider.id)}/start?returnTo=${encodeURIComponent(returnTo)}`,
+        authorizationPath: `/api/v1/auth/providers/${encodeURIComponent(provider.id)}/start?redirectUri=${encodeURIComponent(returnTo)}`,
       }
     : {
         id: 'mock-local',

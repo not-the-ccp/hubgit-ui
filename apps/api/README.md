@@ -19,3 +19,12 @@ repositories and trees, issues and comments, pull requests and reviews, check
 summaries, structured diff files, expected-head merges, dashboard data,
 notifications, and search. Mutations are persisted in SQLite; conflicting
 edits use ETags and replay-safe creates and merges use idempotency keys.
+
+GitHub-backed deployments use the provider-neutral redirect endpoints under
+`/api/v1/auth/providers/{provider}`. A short-lived, single-use state binds the
+authorization callback to its local return path. GitHub user-to-server tokens
+and refresh tokens are encrypted in SQLite with the operator-managed Fernet key
+from `HUBGIT_GITHUB_CREDENTIAL_KEY_FILE`; they are never returned by the API.
+Access can be allowed for any authorized user or restricted by immutable GitHub
+user IDs, active organization memberships, and active team memberships. A
+membership lookup failure denies login.

@@ -10,7 +10,7 @@ describe('HubGit authentication presentation', () => {
     );
     expect(source).toContain("id: 'github-provider'");
     expect(source).toContain(
-      "'/api/v1/auth/providers/github/start?returnTo=%2Fdashboard'",
+      "'/api/v1/auth/providers/github/start?redirectUri=%2Fdashboard'",
     );
     expect(source).toContain('{branding.authentication.connectLabel}');
     expect(source).toContain('HubGit does not ask for, see, or store');

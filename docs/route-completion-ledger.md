@@ -14,7 +14,9 @@ that the route is release-ready.
 
 | Route/state | Owner/updated (UTC) | Status | Contract | Fixtures | Unit/component | E2E | Visual | Keyboard/a11y | Reference record | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `/:owner/:repo` · `M/PRI/OK` | `@owner` · `YYYY-MM-DD` | `not-started` | `none` | `none` | `none` | `none` | `none` | `none` | `none` | `none` |
+| `/api/v1/auth/providers/:provider/start` · configured/unconfigured/invalid-redirect | `@maintainers` · `2026-08-30` | `in-progress` | `startAuthProvider` | `tests/test_github_auth.py` | 20 API tests | `none` | `none` | `none` | GitHub App auth docs · 2026-08-30 | Browser E2E and admin diagnostics UI |
+| `/api/v1/auth/providers/:provider/callback` · success/denied/replay/provider-down | `@maintainers` · `2026-08-30` | `in-progress` | `completeAuthProvider` | `tests/test_github_auth.py` | 20 API tests | `none` | `none` | `none` | GitHub App auth docs · 2026-08-30 | Browser E2E, token refresh, revocation, and admin diagnostics UI |
+| `/:owner/:repo` · `M/PRI/OK` | `@maintainers` · `2026-08-30` | `in-progress` | `getRepository` / `getRepositoryTree` | deterministic mock provider | frontend/API tests | manual browser smoke | `none` | keyboard smoke | GitHub reference · 2026-08-30 | Remaining repository routes and visual baselines |
 
 Evidence requirements:
 

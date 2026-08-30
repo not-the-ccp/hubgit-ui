@@ -70,7 +70,7 @@ export const GITHUB_PROVIDER_AUTH_PROFILE: AuthProfile = {
   mode: 'provider',
   providerName: 'GitHub',
   authorizationPath:
-    '/api/v1/auth/providers/github/start?returnTo=%2Fdashboard',
+    '/api/v1/auth/providers/github/start?redirectUri=%2Fdashboard',
 };
 
 export const HUBGIT_BRANDING: BrandingManifest = {

@@ -20,13 +20,16 @@ class User(Base):
     login: Mapped[str] = mapped_column(String(80), unique=True, index=True)
     display_name: Mapped[str] = mapped_column(String(160))
     email: Mapped[str] = mapped_column(String(320), unique=True)
-    password_hash: Mapped[str] = mapped_column(Text)
+    password_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
     role: Mapped[str] = mapped_column(String(32), default="member")
     avatar_url: Mapped[str] = mapped_column(String(500), default="")
     bio: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
 
     sessions: Mapped[list[Session]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    provider_identities: Mapped[list[ProviderIdentity]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
     def public(self) -> dict[str, Any]:
         return {
@@ -52,6 +55,41 @@ class Session(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
 
     user: Mapped[User] = relationship(back_populates="sessions")
+
+
+class OAuthState(Base):
+    """Single-use, short-lived authorization transaction state."""
+
+    __tablename__ = "oauth_states"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    provider: Mapped[str] = mapped_column(String(32), index=True)
+    state_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    return_to: Mapped[str] = mapped_column(String(500), default="/dashboard")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class ProviderIdentity(Base):
+    """Immutable provider identity and encrypted server-side credentials."""
+
+    __tablename__ = "provider_identities"
+    __table_args__ = (UniqueConstraint("provider", "provider_user_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    provider: Mapped[str] = mapped_column(String(32), index=True)
+    provider_user_id: Mapped[str] = mapped_column(String(100), index=True)
+    provider_login: Mapped[str] = mapped_column(String(160))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    encrypted_credentials: Mapped[str] = mapped_column(Text)
+    credential_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    refresh_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_authorized_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+
+    user: Mapped[User] = relationship(back_populates="provider_identities")
 
 
 class Repository(Base):

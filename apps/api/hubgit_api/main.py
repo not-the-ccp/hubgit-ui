@@ -19,7 +19,9 @@ from .config import Settings
 from .collaboration import router as collaboration_router, seed_collaboration
 from .database import Database
 from .discovery import router as discovery_router
+from .github_auth import CredentialCipher, GitHubAuthClient, GitHubAuthPort
 from .models import Session, User
+from .provider_auth_routes import router as provider_auth_router
 from .providers import MockRepositoryProvider, RepositoryNotFoundError, RepositoryProvider
 from .schemas import AuthMethods, InstanceMeta, LoginInput
 from .security import ProblemError, current_session, get_db, hash_password, new_session, optional_user, require_csrf, require_user, settings, token_hash, verify_password
@@ -132,7 +134,11 @@ def _offset(value: str | None) -> int:
         raise ProblemError(400, "Invalid cursor", "pagination.invalid_cursor", "The cursor is malformed.") from None
 
 
-def create_app(config: Settings | None = None, provider: RepositoryProvider | None = None) -> FastAPI:
+def create_app(
+    config: Settings | None = None,
+    provider: RepositoryProvider | None = None,
+    github_auth: GitHubAuthPort | None = None,
+) -> FastAPI:
     """Create an independently configurable ASGI application."""
     app_settings = config or Settings()
 
@@ -142,6 +148,13 @@ def create_app(config: Settings | None = None, provider: RepositoryProvider | No
         app.state.database = database
         app.state.settings = app_settings
         app.state.repository_provider = provider or MockRepositoryProvider()
+        app.state.github_auth_client = None
+        app.state.credential_cipher = None
+        if app_settings.github_configured:
+            app.state.github_auth_client = github_auth or GitHubAuthClient(app_settings)
+            app.state.credential_cipher = CredentialCipher(
+                app_settings.github_credential_key_file  # type: ignore[arg-type]
+            )
         await database.create_all()
         await _seed_mock_user(database, app_settings)
         if app.state.repository_provider.provider_name == "mock":
@@ -156,6 +169,7 @@ def create_app(config: Settings | None = None, provider: RepositoryProvider | No
     app.add_middleware(RequestSizeLimitMiddleware, max_bytes=app_settings.max_request_bytes)
     app.include_router(collaboration_router)
     app.include_router(discovery_router)
+    app.include_router(provider_auth_router)
 
     @app.exception_handler(ProblemError)
     async def problem_error(request: Request, exc: ProblemError) -> JSONResponse:
@@ -206,7 +220,7 @@ def create_app(config: Settings | None = None, provider: RepositoryProvider | No
                 {
                     "id": "github",
                     "displayName": config.brand_provider_label,
-                    "enabled": True,
+                    "enabled": config.github_configured,
                     "supportsRegistration": True,
                 }
             )
@@ -225,6 +239,8 @@ def create_app(config: Settings | None = None, provider: RepositoryProvider | No
 
     @app.post("/api/v1/auth/login")
     async def login(request: Request, payload: LoginInput, response: Response, db: AsyncSession = Depends(get_db), config: Settings = Depends(settings)) -> dict:
+        if config.provider != "mock":
+            raise ProblemError(404, "Authentication method not found", "auth.method_not_found")
         user = await db.scalar(select(User).where(User.login == payload.login))
         if user is None or not verify_password(user.password_hash, payload.password):
             raise ProblemError(status.HTTP_401_UNAUTHORIZED, "Authentication failed", "auth.invalid_credentials", "Invalid credentials.")

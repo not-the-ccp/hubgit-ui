@@ -25,11 +25,25 @@ redirected to GitHub.
 ## GitHub connection
 
 GitHub authentication is redirect-only. The API starts an OAuth authorization-
-code flow with PKCE, binds state and nonce to the HubGit session, validates the
-callback against the configured redirect URI, and exchanges the code server-side.
+code flow, persists a short-lived single-use state transaction, validates the
+callback, and exchanges the code server-side. GitHub's documented GitHub App web
+flow does not currently advertise PKCE, so HubGit does not send undocumented
+PKCE parameters.
 No HubGit form accepts a GitHub password, token, passkey, recovery code, session
 cookie, SSH key, or device code. Use the minimum provider scopes required by the
 enabled ports and rotate the client secret through the deployment secret store.
+
+Set `HUBGIT_GITHUB_CLIENT_SECRET_FILE` to a file containing the GitHub App client
+secret. Set `HUBGIT_GITHUB_CREDENTIAL_KEY_FILE` to a file containing a Fernet
+key, generated once with `python -c 'from cryptography.fernet import Fernet;
+print(Fernet.generate_key().decode())'`. Protect and back up both files. Losing
+the Fernet key makes stored provider credentials unreadable.
+
+The access policy defaults to `HUBGIT_GITHUB_ALLOW_ANY_AUTHORIZED_USER=true`.
+For a restricted deployment, set it to `false` and configure immutable numeric
+IDs, organizations, or `organization/team-slug` entries. `any` accepts any
+matching rule; `all` requires every configured rule. Membership API errors fail
+closed and are reported with a sanitized administrator-safe error code.
 
 The GitHub adapter is responsible for mapping provider responses to canonical
 ports, preserving permission boundaries, reporting unsupported capabilities, and
@@ -74,12 +88,10 @@ must enforce that value independently of the client.
   limits. Configure bounded retries only for safe/idempotent reads and honor
   provider rate limits.
 
-The root `docker-compose.yml` describes these runtime boundaries, but the
-repository currently has no application-owned Dockerfiles or API entrypoint.
-Compose therefore references the future `apps/api/Dockerfile` and
-`apps/web/Dockerfile` paths and is a deployment contract, not a runnable image
-build until the application work adds those files. Do not add a substitute
-entrypoint that bypasses API authorization or cache policy.
+The root `docker-compose.yml` builds both application-owned Dockerfiles, waits
+for the API health check, and exposes the web application on port 3000. Its
+development defaults deliberately use the mock provider and non-secure local
+cookies; production configuration validation rejects those defaults.
 
 ## Verification and change control
 

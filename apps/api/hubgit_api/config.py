@@ -39,10 +39,49 @@ class Settings(BaseSettings):
     brand_operator_notice: str | None = None
     brand_provider_label: str = "GitHub"
     provider: Literal["mock", "github"] = "mock"
+    github_client_id: str | None = None
+    github_client_secret_file: Path | None = None
+    github_credential_key_file: Path | None = None
+    github_web_base_url: str = "https://github.com"
+    github_api_base_url: str = "https://api.github.com"
+    github_callback_url: str | None = None
+    github_access_policy_mode: Literal["any", "all"] = "any"
+    github_allow_any_authorized_user: bool = True
+    github_allowed_user_ids: str = ""
+    github_required_organizations: str = ""
+    github_required_teams: str = ""
     registration_enabled: bool = False
     mock_login: str = "demo"
     mock_password: str = "demo-password"
     seed_mock_user: bool = True
+
+    @property
+    def github_configured(self) -> bool:
+        return bool(
+            self.github_client_id
+            and self.github_client_secret_file
+            and self.github_credential_key_file
+        )
+
+    @property
+    def github_redirect_uri(self) -> str:
+        return self.github_callback_url or (
+            f"{self.public_base_url.rstrip('/')}/api/v1/auth/providers/github/callback"
+        )
+
+    @staticmethod
+    def _csv(value: str) -> tuple[str, ...]:
+        return tuple(part.strip() for part in value.split(",") if part.strip())
+
+    @property
+    def github_access_policy(self) -> dict[str, object]:
+        return {
+            "mode": self.github_access_policy_mode,
+            "allowAnyAuthorizedUser": self.github_allow_any_authorized_user,
+            "userIds": tuple(int(value) for value in self._csv(self.github_allowed_user_ids)),
+            "organizations": self._csv(self.github_required_organizations),
+            "teams": self._csv(self.github_required_teams),
+        }
 
     @property
     def branding_manifest(self) -> dict[str, object]:
@@ -137,4 +176,20 @@ class Settings(BaseSettings):
                 raise ValueError("Production CORS origins must use HTTPS.")
             if self.seed_mock_user:
                 raise ValueError("Production must not seed the mock user.")
+            if self.provider == "github" and not self.github_configured:
+                raise ValueError("Production GitHub deployments require client and encryption secrets.")
+
+        try:
+            tuple(int(value) for value in self._csv(self.github_allowed_user_ids))
+        except ValueError as exc:
+            raise ValueError("GitHub allowed user IDs must be comma-separated integers.") from exc
+        if any("/" not in team or team.startswith("/") or team.endswith("/") for team in self._csv(self.github_required_teams)):
+            raise ValueError("GitHub teams must use the organization/team-slug form.")
+        for configured_url in (self.github_web_base_url, self.github_api_base_url, self.github_redirect_uri):
+            parsed = urlsplit(configured_url)
+            self.origin_from_url(configured_url)
+            if parsed.query or parsed.fragment:
+                raise ValueError("GitHub URLs must not include a query or fragment.")
+            if self.environment == "production" and parsed.scheme != "https":
+                raise ValueError("Production GitHub URLs must use HTTPS.")
         return self

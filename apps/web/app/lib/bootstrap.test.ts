@@ -52,7 +52,7 @@ describe('provider-neutral application bootstrap', () => {
         mode: 'provider',
         providerName: 'Source provider',
         authorizationPath:
-          '/api/v1/auth/providers/github/start?returnTo=%2Fdashboard%3Ftab%3Dfor-you',
+          '/api/v1/auth/providers/github/start?redirectUri=%2Fdashboard%3Ftab%3Dfor-you',
       },
     });
   });

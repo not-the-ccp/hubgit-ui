@@ -185,7 +185,7 @@ def test_branding_and_provider_login_are_deployment_configurable(tmp_path):
             {
                 "id": "github",
                 "displayName": "Source provider",
-                "enabled": True,
+                    "enabled": False,
                 "supportsRegistration": True,
             }
         ]
