@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -83,10 +83,15 @@ class ResetInput(ApiModel):
 
 
 class IssueInput(ApiModel):
-    title: str = Field(min_length=1, max_length=256)
-    body: str = Field(default="", max_length=100_000)
-    labels: list[str] = []
-    assignees: list[str] = []
+    title: str | None = Field(default=None, min_length=1, max_length=256)
+    body: str | None = Field(default=None, max_length=100_000)
+    state: Literal["open", "closed"] | None = None
+    state_reason: Literal["completed", "not_planned", "reopened"] | None = Field(
+        default=None, alias="stateReason"
+    )
+    label_ids: list[str] | None = Field(default=None, alias="labelIds")
+    assignee_ids: list[str] | None = Field(default=None, alias="assigneeIds")
+    milestone_id: str | None = Field(default=None, alias="milestoneId")
 
 
 class CommentInput(ApiModel):
@@ -103,13 +108,20 @@ class PullInput(ApiModel):
 
 class ReviewInput(ApiModel):
     body: str = ""
-    event: str = Field(pattern=r"^(comment|approve|request_changes)$")
-    comments: list[dict[str, Any]] = []
+    event: Literal["comment", "approve", "request_changes"]
+    comments: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class MergeInput(ApiModel):
     method: str = Field(default="merge", pattern=r"^(merge|squash|rebase)$")
-    commit_title: str | None = Field(default=None, alias="commitTitle", max_length=256)
+    title: str | None = Field(default=None, max_length=256)
+    message: str | None = Field(default=None, max_length=100_000)
+    expected_head_sha: str = Field(alias="expectedHeadSha", min_length=7, max_length=64)
+
+
+class NotificationUpdate(ApiModel):
+    ids: list[str] = Field(default_factory=list)
+    all: bool = False
 
 
 class RepositoryPatch(ApiModel):

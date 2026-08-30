@@ -16,7 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .config import Settings
+from .collaboration import router as collaboration_router, seed_collaboration
 from .database import Database
+from .discovery import router as discovery_router
 from .models import Session, User
 from .providers import MockRepositoryProvider, RepositoryNotFoundError, RepositoryProvider
 from .schemas import AuthMethods, InstanceMeta, LoginInput
@@ -142,6 +144,8 @@ def create_app(config: Settings | None = None, provider: RepositoryProvider | No
         app.state.repository_provider = provider or MockRepositoryProvider()
         await database.create_all()
         await _seed_mock_user(database, app_settings)
+        if app.state.repository_provider.provider_name == "mock":
+            await seed_collaboration(database)
         try:
             yield
         finally:
@@ -150,6 +154,8 @@ def create_app(config: Settings | None = None, provider: RepositoryProvider | No
     app = FastAPI(title=app_settings.instance_name, version="0.1.0", lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=app_settings.cors_origin_list, allow_credentials=True, allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"], allow_headers=["Content-Type", "X-CSRF-Token", "If-Match", "Idempotency-Key"])
     app.add_middleware(RequestSizeLimitMiddleware, max_bytes=app_settings.max_request_bytes)
+    app.include_router(collaboration_router)
+    app.include_router(discovery_router)
 
     @app.exception_handler(ProblemError)
     async def problem_error(request: Request, exc: ProblemError) -> JSONResponse:
@@ -190,7 +196,7 @@ def create_app(config: Settings | None = None, provider: RepositoryProvider | No
 
     @app.get("/api/v1/capabilities")
     async def capabilities(request: Request) -> dict:
-        return {"provider": request.app.state.repository_provider.provider_name, "version": "1", "features": {"issues": False, "pullRequests": False, "releases": False, "wiki": False, "discussions": False, "projects": False, "actions": False, "security": False, "insights": False, "webhooks": False, "repositoryRules": False, "serverSentEvents": False}, "limits": {"maxPageSize": 100, "maxUploadBytes": 0}}
+        return {"provider": request.app.state.repository_provider.provider_name, "version": "1", "features": {"issues": True, "pullRequests": True, "releases": False, "wiki": False, "discussions": False, "projects": False, "actions": False, "security": False, "insights": False, "webhooks": False, "repositoryRules": False, "serverSentEvents": False}, "limits": {"maxPageSize": 100, "maxUploadBytes": 0}}
 
     @app.get("/api/v1/auth/methods", response_model=AuthMethods, response_model_by_alias=True)
     async def auth_methods(config: Settings = Depends(settings)) -> AuthMethods:

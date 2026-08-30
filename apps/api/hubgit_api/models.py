@@ -149,3 +149,48 @@ class Notification(Base):
             "repository": self.repository,
             "updatedAt": self.updated_at.isoformat(),
         }
+
+
+class CollaborationItem(Base):
+    """Provider-neutral mutable mock state for issues, pull requests, and comments."""
+
+    __tablename__ = "collaboration_items"
+    __table_args__ = (UniqueConstraint("repository_key", "kind", "number"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    repository_key: Mapped[str] = mapped_column(String(260), index=True)
+    kind: Mapped[str] = mapped_column(String(32), index=True)
+    number: Mapped[int] = mapped_column(Integer)
+    data: Mapped[dict[str, Any]] = mapped_column(JSON)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=now_utc, onupdate=now_utc
+    )
+
+    def public(self) -> dict[str, Any]:
+        result = dict(self.data)
+        result.setdefault("id", f"{self.kind}_{self.id}")
+        result.setdefault("number", self.number)
+        result.setdefault("createdAt", self.created_at.isoformat())
+        result["updatedAt"] = self.updated_at.isoformat()
+        return result
+
+    @property
+    def etag(self) -> str:
+        return f'"{self.kind}:{self.id}:v{self.version}"'
+
+
+class IdempotencyRecord(Base):
+    """Durable replay record scoped to one authenticated operation."""
+
+    __tablename__ = "idempotency_records"
+    __table_args__ = (UniqueConstraint("scope", "key"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    scope: Mapped[str] = mapped_column(String(500), index=True)
+    key: Mapped[str] = mapped_column(String(200))
+    request_hash: Mapped[str] = mapped_column(String(64))
+    response: Mapped[dict[str, Any]] = mapped_column(JSON)
+    status_code: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)

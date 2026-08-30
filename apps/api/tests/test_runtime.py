@@ -25,7 +25,8 @@ def test_health_meta_and_capabilities(tmp_path):
         }
         response = test_client.get("/api/v1/capabilities")
         assert response.json()["provider"] == "mock"
-        assert response.json()["features"]["issues"] is False
+        assert response.json()["features"]["issues"] is True
+        assert response.json()["features"]["pullRequests"] is True
         cors = test_client.options("/api/v1/auth/session", headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": "DELETE"})
         assert cors.headers["access-control-allow-origin"] == "http://localhost:3000"
 
@@ -57,7 +58,7 @@ def test_problem_validation_and_repository_reads(tmp_path):
         assert invalid.headers["content-type"].startswith("application/problem+json")
         listing = test_client.get("/api/v1/repositories", params={"limit": 1})
         assert listing.status_code == 200
-        assert listing.json()["totalCount"] == 2
+        assert listing.json()["totalCount"] == 3
         repo = test_client.get("/api/v1/repositories/demo/hubgit-demo")
         assert repo.json()["cloneUrls"]["http"].startswith("https://")
         tree = test_client.get("/api/v1/repositories/demo/hubgit-demo/tree/main", params={"path": "src"})

@@ -55,7 +55,12 @@ class MockRepositoryProvider:
     provider_name: str = "mock"
 
     def _repos(self) -> list[dict]:
-        return [_repository("demo", "hubgit-demo"), _repository("octocat", "hello-world", language="TypeScript"), _repository("demo", "private-notes", visibility="private", language=None)]
+        return [
+            _repository("not-the-ccp", "hubgit-ui", language="TypeScript"),
+            _repository("demo", "hubgit-demo"),
+            _repository("octocat", "hello-world", language="TypeScript"),
+            _repository("demo", "private-notes", visibility="private", language=None),
+        ]
 
     def _visible(self, repository: dict, viewer: User | None) -> bool:
         return repository["visibility"] == "public" or (viewer is not None and viewer.login == repository["owner"]["login"])
