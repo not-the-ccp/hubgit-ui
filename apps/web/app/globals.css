@@ -840,6 +840,14 @@ select:focus-visible {
   display: grid;
   gap: 8px;
 }
+.auth-card .flash-error {
+  margin: 0 0 6px;
+  padding: 10px;
+  border: 1px solid var(--danger-emphasis);
+  border-radius: 6px;
+  background: var(--danger-muted);
+  color: var(--danger-emphasis);
+}
 .auth-card label {
   margin-top: 3px;
   font-weight: 600;

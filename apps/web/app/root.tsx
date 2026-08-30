@@ -7,10 +7,17 @@ import {
   ScrollRestoration,
   isRouteErrorResponse,
   useRouteError,
+  useLoaderData,
+  type LoaderFunctionArgs,
 } from 'react-router';
 
 import './globals.css';
 import { AppProviders } from './providers';
+import { loadBootstrap } from './lib/bootstrap';
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  return loadBootstrap(request);
+}
 
 export const links = () => [
   { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
@@ -43,8 +50,9 @@ export function Layout({ children }: { children: ReactNode }) {
 }
 
 export default function Root() {
+  const bootstrap = useLoaderData<typeof loader>();
   return (
-    <AppProviders>
+    <AppProviders bootstrap={bootstrap}>
       <Outlet />
     </AppProviders>
   );

@@ -2,6 +2,7 @@
 
 import { SyntheticEvent, useState } from 'react';
 import type { BrandingManifest, Freshness } from '@hubgit/contracts';
+import { hubgitApi } from '../app/lib/api-client';
 import {
   AlertIcon,
   BellIcon,
@@ -416,6 +417,8 @@ function AuthPage({
   setBranding: (v: BrandingManifest) => void;
   onLogin: () => void;
 }) {
+  const [authError, setAuthError] = useState<string>();
+  const [submitting, setSubmitting] = useState(false);
   const isProvider = authProfile.mode === 'provider';
   const title =
     mode === 'join'
@@ -427,10 +430,29 @@ function AuthPage({
           : mode === 'verify'
             ? 'Verify your email'
             : branding.authentication.heading;
-  const submit = (event: SyntheticEvent<HTMLFormElement>) => {
+  const submit = async (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
-    onLogin();
-    window.location.href = '/dashboard';
+    setAuthError(undefined);
+    setSubmitting(true);
+    try {
+      if (mode === 'login') {
+        const values = new FormData(event.currentTarget);
+        const login = values.get('login');
+        const password = values.get('password');
+        await hubgitApi.login(
+          typeof login === 'string' ? login : '',
+          typeof password === 'string' ? password : '',
+        );
+      }
+      onLogin();
+      window.location.href = mode === 'login' ? '/dashboard' : '/login';
+    } catch (error) {
+      setAuthError(
+        error instanceof Error ? error.message : 'Authentication failed.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
   return (
     <main className="auth-page">
@@ -486,6 +508,11 @@ function AuthPage({
           </>
         ) : (
           <form onSubmit={submit}>
+            {authError ? (
+              <p className="flash-error" role="alert">
+                {authError}
+              </p>
+            ) : null}
             {mode === 'join' && (
               <>
                 <label htmlFor="name">Username</label>
@@ -503,6 +530,7 @@ function AuthPage({
                 <label htmlFor="login">Username or email address</label>
                 <input
                   id="login"
+                  name="login"
                   autoComplete="username"
                   defaultValue="monalisa"
                 />
@@ -520,6 +548,7 @@ function AuthPage({
                 </label>
                 <input
                   id="password"
+                  name="password"
                   type={mode === 'password-reset' ? 'email' : 'password'}
                   autoComplete="current-password"
                   defaultValue={
@@ -530,12 +559,19 @@ function AuthPage({
                 />
               </>
             )}
-            <button className="primary-button wide" type="submit">
+            <button
+              className="primary-button wide"
+              type="submit"
+              disabled={submitting}
+              aria-busy={submitting}
+            >
               {mode === 'join'
                 ? 'Create account'
                 : mode === 'password-reset'
                   ? 'Send reset link'
-                  : 'Continue'}
+                  : submitting
+                    ? 'Signing in…'
+                    : 'Continue'}
             </button>
           </form>
         )}
