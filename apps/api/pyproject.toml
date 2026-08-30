@@ -9,6 +9,7 @@ dependencies = [
   "aiosqlite>=0.20,<1",
   "argon2-cffi>=23.1,<26",
   "dulwich>=0.22,<1",
+  "email-validator>=2.2,<3",
   "fastapi>=0.115,<1",
   "pydantic>=2.10,<3",
   "pydantic-settings>=2.7,<3",
@@ -37,4 +38,3 @@ include = ["hubgit_api*"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-

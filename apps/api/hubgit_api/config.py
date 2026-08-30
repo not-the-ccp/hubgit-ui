@@ -12,8 +12,13 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     session_hours: int = 24
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    instance_name: str = "HubGit"
+    public_base_url: str = "http://localhost:8000"
+    branding: str = "hubgit"
+    registration_enabled: bool = False
+    mock_login: str = "demo"
+    mock_password: str = "demo-password"
 
     @property
     def cors_origin_list(self) -> list[str]:
         return [value.strip() for value in self.cors_origins.split(",") if value.strip()]
-
