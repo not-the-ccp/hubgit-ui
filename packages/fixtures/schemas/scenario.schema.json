@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hubgit.example/fixtures/scenario.schema.json",
+  "title": "HubGit deterministic fixture scenario",
+  "type": "object",
+  "required": ["scenario", "asOf"],
+  "properties": {
+    "scenario": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+    "asOf": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true
+}

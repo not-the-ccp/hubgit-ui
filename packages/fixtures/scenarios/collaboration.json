@@ -1,0 +1,21 @@
+{
+  "scenario": "collaboration",
+  "asOf": "2026-01-15T12:00:00Z",
+  "repository": "repo_hubgit",
+  "access": {
+    "collaborators": [
+      { "subjectId": "usr_ada", "subjectKind": "user", "permission": "admin" },
+      { "subjectId": "usr_grace", "subjectKind": "user", "permission": "write" }
+    ],
+    "teams": []
+  },
+  "issues": [
+    { "id": "issue_42", "number": 42, "title": "Add cache freshness indicator", "state": "open", "authorId": "usr_grace", "assigneeIds": ["usr_ada"], "labelNames": ["enhancement"], "commentCount": 1 }
+  ],
+  "pullRequests": [
+    { "id": "pr_7", "number": 7, "title": "Expose adapter cache state", "state": "open", "draft": false, "authorId": "usr_ada", "base": "main", "head": "cache-state", "mergeability": "mergeable", "reviewDecision": "approved", "reviewerIds": ["usr_grace"] }
+  ],
+  "comments": [
+    { "id": "comment_101", "subjectId": "issue_42", "authorId": "usr_ada", "body": "The response will carry canonical Freshness metadata.", "createdAt": "2026-01-15T11:30:00Z" }
+  ]
+}

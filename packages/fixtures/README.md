@@ -6,10 +6,11 @@ state by reloading these files rather than modifying the source JSON.
 
 | File | Purpose |
 | --- | --- |
-| `scenarios/viewers.json` | Guest, member, maintainer, and administrator personas |
-| `scenarios/repositories.json` | Public, private, archived, and empty repositories |
-| `scenarios/issues.json` | Open/closed issues, labels, milestones, and comments |
-| `scenarios/pull-requests.json` | Draft/mergeable/conflicted PRs and check suites |
+| `scenarios/users.json` | Guest, member, and maintainer user personas |
+| `scenarios/repositories.json` | Public and private empty/non-empty repositories |
+| `scenarios/collaboration.json` | Repository grants, issues, pull requests, and comments |
+| `scenarios/failures.json` | Stable authentication, concealment, ETag, idempotency, and validation problems |
 
-All objects follow `@hubgit/contracts/openapi.json`: camel-case properties, opaque
-string IDs, and RFC 3339 UTC timestamps.
+All objects use camel-case properties, opaque string IDs, and RFC 3339 UTC
+timestamps. Run `pnpm --filter @hubgit/fixtures validate` to verify references
+and deterministic timestamps.
