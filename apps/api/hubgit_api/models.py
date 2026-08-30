@@ -32,12 +32,11 @@ class User(Base):
         return {
             "id": f"usr_{self.id}",
             "kind": "user",
-            "login": self.login,
+            "username": self.login,
             "displayName": self.display_name,
-            "email": self.email,
             "avatarUrl": self.avatar_url or f"https://api.dicebear.com/9.x/identicon/svg?seed={self.login}",
+            "profileUrl": f"/{self.login}",
             "bio": self.bio,
-            "role": self.role,
             "createdAt": self.created_at.isoformat(),
         }
 
@@ -88,16 +87,21 @@ class Repository(Base):
             "visibility": self.visibility,
             "defaultBranch": self.default_branch,
             "language": self.language,
-            "stargazerCount": self.stars,
-            "forkCount": self.forks,
+            "empty": False,
             "archived": self.archived,
+            "fork": False,
+            "forkedFrom": None,
+            "license": None,
+            "topics": [],
             "cloneUrls": {
-                "https": f"https://git.example.test/{self.owner}/{self.name}.git",
+                "http": f"https://git.example.test/{self.owner}/{self.name}.git",
                 "ssh": f"git@git.example.test:{self.owner}/{self.name}.git",
             },
-            "permissions": {"read": True, "triage": viewer is not None, "write": can_write, "admin": can_admin},
+            "permissions": {"read": True, "triage": viewer is not None, "write": can_write, "maintain": can_write, "admin": can_admin},
+            "counts": {"stars": self.stars, "forks": self.forks, "watchers": self.stars, "issues": 0, "pullRequests": 0},
             "createdAt": self.created_at.isoformat(),
             "updatedAt": self.updated_at.isoformat(),
+            "pushedAt": self.updated_at.isoformat(),
         }
 
 
@@ -145,4 +149,3 @@ class Notification(Base):
             "repository": self.repository,
             "updatedAt": self.updated_at.isoformat(),
         }
-
