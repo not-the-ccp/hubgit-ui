@@ -1,0 +1,2 @@
+[console_scripts]
+hubgit-api = hubgit_api.cli:main

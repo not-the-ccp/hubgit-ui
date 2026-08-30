@@ -1,0 +1,37 @@
+Metadata-Version: 2.4
+Name: hubgit-api
+Version: 0.1.0
+Summary: Provider-neutral mock Git collaboration API for HubGit UI
+License: MIT
+Requires-Python: >=3.13
+Description-Content-Type: text/markdown
+Requires-Dist: aiosqlite<1,>=0.20
+Requires-Dist: argon2-cffi<26,>=23.1
+Requires-Dist: dulwich<1,>=0.22
+Requires-Dist: email-validator<3,>=2.2
+Requires-Dist: fastapi<1,>=0.115
+Requires-Dist: pydantic<3,>=2.10
+Requires-Dist: pydantic-settings<3,>=2.7
+Requires-Dist: sqlalchemy[asyncio]<3,>=2.0
+Requires-Dist: uvicorn[standard]<1,>=0.34
+Provides-Extra: dev
+Requires-Dist: httpx<1,>=0.28; extra == "dev"
+Requires-Dist: pytest<9,>=8.3; extra == "dev"
+Requires-Dist: pytest-asyncio<1,>=0.25; extra == "dev"
+
+# HubGit API
+
+The bounded Wave 1 backend is a FastAPI application with a SQLite-backed local
+session store and a deterministic, provider-neutral mock repository adapter.
+
+Run it from this directory:
+
+```bash
+python -m pip install -e '.[dev]'
+hubgit-api --reload
+```
+
+The seeded local account is `demo` with password `demo-password`. Login creates
+an HttpOnly session cookie; send the returned `csrfToken` in `X-CSRF-Token` for
+the logout request. The only repository operations in this slice are listing,
+repository detail, and tree reads.
