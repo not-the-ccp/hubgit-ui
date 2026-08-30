@@ -1,0 +1,52 @@
+name: hubgit
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      HUBGIT_ENVIRONMENT: production
+      HUBGIT_DATABASE_URL: sqlite+aiosqlite:////var/lib/hubgit/hubgit.db
+      HUBGIT_DATA_DIR: /var/lib/hubgit
+      HUBGIT_COOKIE_SECURE: "true"
+      HUBGIT_WEB_ORIGIN: ${HUBGIT_WEB_ORIGIN:-http://localhost:3000}
+      HUBGIT_API_ORIGIN: ${HUBGIT_API_ORIGIN:-http://localhost:8000}
+    ports:
+      - "${HUBGIT_API_PORT:-8000}:8000"
+    volumes:
+      - hubgit-data:/var/lib/hubgit
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      HUBGIT_API_ORIGIN: ${HUBGIT_API_ORIGIN:-http://api:8000}
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "${HUBGIT_WEB_PORT:-3000}:3000"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  hubgit-data:

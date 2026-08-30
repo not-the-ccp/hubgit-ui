@@ -1,0 +1,28 @@
+name: OpenAPI contract
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+
+      - name: Validate checked-in contract
+        run: node packages/contracts/scripts/validate.mjs
+
+      - name: Parse contract as strict JSON
+        run: node --input-type=module -e "JSON.parse(await (await import('node:fs/promises')).readFile('packages/contracts/openapi.json', 'utf8'));"

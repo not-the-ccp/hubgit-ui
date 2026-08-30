@@ -77,11 +77,11 @@ Every route row refers to the following reusable state codes.
 | Area | Route or surface | Roles | Required fixtures and behavior |
 | --- | --- | --- | --- |
 | Public shell | `/` | G, M | Logged-out marketing/entry state; logged-in redirect or dashboard state; D1/D2/M1; light/dark/high contrast. |
-| Sign in | `/login` | G, S | Empty, invalid credentials, locked/rate-limited, return URL, expired session, password manager/autofill, 2FA continuation; mandatory reference-brand warning. |
-| Registration | `/signup` | G | Available/disabled registration, field errors, duplicate identity, verification pending, server error; mandatory reference-brand warning. |
-| Verification | `/verify`, `/verify/:token` | G, M | Pending, accepted, expired, already used, invalid token; mandatory reference-brand warning. |
-| Recovery | `/password-reset`, `/password-reset/:token` | G | Request accepted without account enumeration, expired/invalid token, password policy errors; mandatory reference-brand warning. |
-| Second factor | `/sessions/2fa` | G, S | TOTP, recovery code, mock passkey prompt, invalid code, rate limit, cancel/back; mandatory reference-brand warning. |
+| Sign in | `/login` | G, S | Empty, invalid credentials, locked/rate-limited, return URL, expired session, password manager/autofill, 2FA continuation; configurable product identity and local-credential explanation. |
+| Registration | `/signup` | G | Available/disabled registration, field errors, duplicate identity, verification pending, server error; configurable product identity and local-credential explanation. |
+| Verification | `/verify`, `/verify/:token` | G, M | Pending, accepted, expired, already used, invalid token; configurable product identity and local-credential explanation. |
+| Recovery | `/password-reset`, `/password-reset/:token` | G | Request accepted without account enumeration, expired/invalid token, password policy errors; configurable product identity and local-credential explanation. |
+| Second factor | `/sessions/2fa` | G, S | TOTP, recovery code, mock passkey prompt, invalid code, rate limit, cancel/back; configurable product identity and local-credential explanation. |
 | Dashboard | `/dashboard` | M, T, A | First-use empty, populated feed, recent repositories, organizations, failed widget, notification counts, responsive sidebars. |
 | Global navigation | all application routes | G, M, T, A | Search, create menu, account menu, breadcrumbs, unread indicator, responsive drawer, command palette, focus restoration, outside-click and Escape dismissal. |
 | Notifications | `/notifications` | M, T, A | All/participating, read/unread, repository/reason filters, grouped rows, bulk mark/read/unsubscribe, E0, optimistic rollback, OFF. |
@@ -174,12 +174,22 @@ All repository routes use `/:owner/:repo` as their base. Unless narrowed below, 
 | Capability absent | Omit feature navigation and creation affordances. A direct URL renders an explicit unsupported-feature page. |
 | Feature disabled | Preserve discoverability for authorized maintainers and link to the enabling setting; ordinary users see the repository-specific disabled state. |
 
-## Route Completion Record
+## Route Completion Ledger
+
+The ledger is committed with each implementation pull request and has one row
+per affected route and state. Status values are `not-started`, `in-progress`,
+`blocked`, or `complete`; a route is `complete` only when every required evidence
+column links to a checked-in artifact or a CI run. Keep reference observations
+sanitized and keep provider credentials, private data, and reference captures
+outside the repository.
 
 Each implementation pull request updates the following record for every affected route:
 
 | Field | Required evidence |
 | --- | --- |
+| Route/state | Canonical route template plus state codes from this matrix. |
+| Owner/updated | Responsible team or contributor and UTC update date. |
+| Status | `not-started`, `in-progress`, `blocked`, or `complete`; blockers name the missing dependency. |
 | Contract | OpenAPI operation and generated-client type exist. |
 | Fixtures | Deterministic normal, empty, loading, permission, and failure data exist. |
 | Unit/component | State logic, URL synchronization, and critical accessibility semantics pass. |
@@ -187,6 +197,15 @@ Each implementation pull request updates the following record for every affected
 | Visual | Approved D1, D2, and M1 baselines in light/dark for representative states. |
 | Keyboard/a11y | Keyboard workflow and Axe scan pass. |
 | Reference record | Date, route, viewport, theme, state, measurements, and observations are recorded without checked-in GitHub screenshots or proprietary assets. |
+
+Use the standalone `docs/route-completion-ledger.md` template or copy this
+compact format into the pull request description:
+
+```markdown
+| Route/state | Owner/updated | Status | Contract | Fixtures | Unit/component | E2E | Visual | Keyboard/a11y | Reference record | Blocker |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `/:owner/:repo` · `M/PRI/OK` | @contributor · 2026-08-30 | in-progress | PR #123 | `fixtures/repo.ts` | CI #456 | CI #456 | D1/D2/M1 light+dark | Axe CI #456 | `docs/reference-records/repo.md` | none |
+```
 
 ## Explicit Exclusions
 

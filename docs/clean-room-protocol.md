@@ -4,7 +4,29 @@
 
 This protocol permits factual study of a publicly served interface while preventing proprietary GitHub implementation material from entering HubGit. It applies to every contributor, automated agent, screenshot, browser capture, local note, generated artifact, and commit.
 
-HubGit is an independent implementation. GitHub's interface may be observed to document behavior and measurements. Implementation code must be original or drawn from dependencies with compatible licenses, including Primer and Octicons.
+HubGit is an independent implementation with fully configurable branding.
+GitHub's interface may be observed to document behavior and measurements.
+Implementation code must be original or drawn from dependencies with compatible
+licenses, including Primer and Octicons. GitHub is a provider integration target,
+not a required visual identity or authentication surface.
+
+## Branding and Authentication Safety
+
+The default build uses the original HubGit name, artwork, colors, and local
+credential wording. Deployments may configure product identity, artwork, colors,
+support text, policy links, and provider labels, provided that the resulting
+copy continues to identify the configured product and does not imply that a
+provider owns or operates it. Configuration is validated for safe URLs and
+active-content sources; third-party fonts, analytics, and unreviewed remote
+assets are disabled by default.
+
+GitHub authentication, when enabled for a private self-hosted deployment, is a
+redirect-only server-side OAuth authorization-code flow with PKCE. HubGit forms
+must never collect a GitHub password, token, passkey, recovery code, session
+cookie, SSH key, or device code. Local sign-in and provider connection remain
+separately named operations, and callbacks return only to an allowlisted
+same-origin path. Clean-room observations must not be used to reproduce a
+provider credential form.
 
 ## Allowed Reference Work
 
@@ -105,6 +127,9 @@ If provenance or license compatibility is uncertain, implement the behavior inde
 - Use public pages or a dedicated test account containing no sensitive repositories, organizations, keys, applications, or personal data.
 - Never enter a real GitHub password, passkey, recovery code, personal access token, SSH key, or OAuth secret into HubGit or its mock backend.
 - Never replay a captured GitHub request against GitHub from HubGit code or tests.
+- Do not use an offline cache or stale reference capture as authorization. Offline
+  behavior is limited to bounded, read-only display of previously authorized
+  HubGit cache entries; no mutation is queued or replayed.
 - Do not probe undocumented endpoints at scale. Obey rate limits and stop on an authorization error.
 - Sanitize cookies, authorization headers, CSRF values, signed URLs, email addresses, IP addresses, and repository names before retaining notes.
 - No telemetry or analytics may transmit local reference data.

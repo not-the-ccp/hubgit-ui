@@ -2,7 +2,7 @@
 
 ## Goals
 
-HubGit presents one stable, provider-neutral API to the web application. The initial stateful mock backend and future Forgejo, Gitea, or other provider adapters implement the same application ports. The browser never interprets provider-specific payloads, pagination headers, permissions, error bodies, authentication mechanisms, or feature names.
+HubGit presents one stable, provider-neutral API to the web application. The initial stateful mock backend and future GitHub, Forgejo, Gitea, or other provider adapters implement the same application ports. GitHub is the first production integration target for private self-hosted installations, but it is an adapter choice rather than a frontend dependency. The browser never interprets provider-specific payloads, pagination headers, permissions, error bodies, authentication mechanisms, or feature names.
 
 The architecture optimizes for:
 
@@ -11,6 +11,20 @@ The architecture optimizes for:
 - Explicit capability and permission boundaries.
 - Secure server-side custody of provider credentials.
 - Consistent conflict, pagination, idempotency, and event semantics.
+
+Private self-hosting is the default deployment posture. An operator runs the HubGit
+API, web application, database, cache, and provider connection inside a private
+network or behind an access-controlled reverse proxy. The deployment can select a
+GitHub adapter first and later add another adapter without changing route
+components or the public contract.
+
+Branding is configuration, not a route-level assumption. Operators may set the
+product name, logo, colors, favicon, support text, authentication explanation,
+legal/policy links, and external-provider labels. The safe defaults identify the
+product as HubGit, use original artwork, avoid third-party assets and analytics,
+and keep all authentication copy explicit about the configured provider. Config
+validation rejects empty identity fields, unsafe URLs, and active-content logo
+sources before startup.
 
 ## Runtime Components
 
@@ -34,7 +48,7 @@ HubGit REST API (/api/v1) ───────────────► SSE s
   └── future provider adapter ─► provider REST/Git APIs
 ```
 
-The API process owns authentication, authorization, normalization, caching, error translation, and provider calls. Provider credentials are never exposed to the browser or encoded in HubGit session state returned to the browser.
+The API process owns authentication, authorization, normalization, caching, error translation, and provider calls. Provider credentials are never exposed to the browser or encoded in HubGit session state returned to the browser. The web process may serve public static assets, but it does not become a provider proxy and never receives provider credentials.
 
 ## Layer Responsibilities
 
@@ -60,6 +74,9 @@ The API process owns authentication, authorization, normalization, caching, erro
 - Idempotent commands: create, merge, workflow dispatch, rerun, and other retry-sensitive commands require an idempotency key. Reuse returns the original result or a stable conflict.
 - Raw and archive responses use explicit content types, safe filenames, private-cache directives, and range support where the adapter can provide it.
 - Dates, counts, and identifiers retain provider precision; adapters do not invent total counts or timestamps.
+- Private cache entries are keyed by provider, tenant, repository, contract version, and authorization subject. A repository cache is never shared across authorization subjects, even when the upstream provider marks the response public.
+- The API may maintain a per-repository cache and automatically populate it after an authorized read. Automatic caching is bounded by size and TTL, stores only canonical responses, and is invalidated on permission, session, provider, or repository changes. Cache misses fail closed when authorization cannot be re-established.
+- Offline access is a bounded read-only grace window over data that was already authorized and cached. The API records the last successful authorization and refuses cached reads after the configured window or a revocation event. Offline mode never queues, retries, or applies a mutation.
 
 ## Domain Boundary
 
@@ -132,7 +149,13 @@ The mock adapter uses local accounts and Argon2 password hashes. A future provid
 - A provider token entered on a dedicated provider-connection page and encrypted at rest.
 - An administrator-configured service credential plus mapped local identity, only when the provider and deployment policy permit impersonation safely.
 
-Provider passwords are not an accepted connection method. The reference-brand login page is only a HubGit login page and must never request a GitHub password, token, passkey, recovery code, or OAuth device code.
+Provider passwords are not an accepted connection method. When GitHub authentication is enabled, it is redirect-only: the API starts a server-side OAuth authorization-code flow with PKCE, validates state and nonce, and exchanges the code at the provider. HubGit forms never collect a GitHub password, token, passkey, recovery code, session cookie, SSH key, or OAuth device code. Return paths are same-origin relative paths selected from an allowlist.
+
+Branding configuration cannot change this authentication boundary. A custom
+authentication explanation must identify the configured provider and local
+credential boundary, and a provider connection must remain a separately named
+settings operation. If GitHub authentication is not configured, the GitHub
+redirect is unavailable rather than replaced with a credential form.
 
 ## Request Flow
 
@@ -182,6 +205,7 @@ A provider adapter is eligible for release only when it:
 - Preserves ETags or creates safe application revisions for conditional writes.
 - Documents every semantic mismatch, disabled operation, and degraded fallback.
 - Provides contract fixtures recorded from a dedicated synthetic provider instance, with all identifiers and secrets sanitized.
+- Supports authorization-aware per-repository caching and an explicit offline read-only policy without allowing offline commands.
 
 ### Forgejo-oriented mapping notes
 
