@@ -39,12 +39,17 @@ uv sync --project apps/api --all-extras
 pnpm dev
 ```
 
-For an isolated stack, use the Compose contract after application-owned
-Dockerfiles and an API entrypoint have been added:
+For an isolated local stack, build and start both services with:
 
 ```bash
 docker compose up --build
 ```
+
+The defaults expose the web application at `http://localhost:3000` and the API
+at `http://localhost:8000`. Production deployments must set an HTTPS public
+base URL, secure cookies, disable the seeded mock user, and place private data
+on protected persistent storage. The API rejects an unsafe production
+configuration at startup.
 
 ## License
 

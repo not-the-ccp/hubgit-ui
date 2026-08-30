@@ -9,16 +9,17 @@ services:
       - path: .env
         required: false
     environment:
-      HUBGIT_ENVIRONMENT: production
-      HUBGIT_DATABASE_URL: sqlite+aiosqlite:////var/lib/hubgit/hubgit.db
-      HUBGIT_DATA_DIR: /var/lib/hubgit
-      HUBGIT_COOKIE_SECURE: "true"
-      HUBGIT_WEB_ORIGIN: ${HUBGIT_WEB_ORIGIN:-http://localhost:3000}
-      HUBGIT_API_ORIGIN: ${HUBGIT_API_ORIGIN:-http://localhost:8000}
+      HUBGIT_ENVIRONMENT: ${HUBGIT_ENVIRONMENT:-development}
+      HUBGIT_DATABASE_URL: sqlite+aiosqlite:////data/hubgit.db
+      HUBGIT_DATA_DIR: /data
+      HUBGIT_COOKIE_SECURE: ${HUBGIT_COOKIE_SECURE:-false}
+      HUBGIT_PUBLIC_BASE_URL: ${HUBGIT_PUBLIC_BASE_URL:-http://localhost:3000}
+      HUBGIT_CORS_ORIGINS: ${HUBGIT_CORS_ORIGINS:-http://localhost:3000}
+      HUBGIT_SEED_MOCK_USER: ${HUBGIT_SEED_MOCK_USER:-true}
     ports:
       - "${HUBGIT_API_PORT:-8000}:8000"
     volumes:
-      - hubgit-data:/var/lib/hubgit
+      - hubgit-data:/data
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m
@@ -36,7 +37,7 @@ services:
       HUBGIT_API_ORIGIN: ${HUBGIT_API_ORIGIN:-http://api:8000}
     depends_on:
       api:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "${HUBGIT_WEB_PORT:-3000}:3000"
     read_only: true
