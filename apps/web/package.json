@@ -17,6 +17,7 @@
     "typecheck": "react-router typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@hubgit/contracts": "workspace:*",
     "@base-ui/react": "1.7.0",
     "@hookform/resolvers": "^5.9.1",
     "@primer/octicons-react": "^19.33.0",

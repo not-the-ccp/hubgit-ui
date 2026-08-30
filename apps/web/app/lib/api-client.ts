@@ -1,133 +1,28 @@
-export interface BrandingManifest {
-  productName: string;
-  shortName: string;
-  logoUrl: string | null;
-  faviconUrl: string;
-  titleTemplate: string;
-  colors: {
-    accent: string;
-    headerBackground: string;
-  };
-  authentication: {
-    heading: string;
-    description: string;
-    connectLabel: string;
-  };
-  links: {
-    privacy: string | null;
-    terms: string | null;
-    source: string | null;
-    support: string | null;
-  };
-  notice: string | null;
-}
+import type {
+  BrandingManifest,
+  CapabilitySet,
+  Freshness,
+  GitTree,
+  InstanceMeta,
+  ProblemDetails,
+  Repository,
+  RepositoryPage,
+  Session,
+  Viewer,
+} from '@hubgit/contracts';
 
-export interface Freshness {
-  state: 'live' | 'refreshing' | 'stale' | 'offline';
-  lastSyncedAt: string | null;
-  lastAuthorizedAt: string | null;
-  provider: string;
-}
+export type {
+  BrandingManifest,
+  CapabilitySet,
+  Freshness,
+  InstanceMeta,
+  ProblemDetails,
+  Repository,
+  Session,
+  Viewer,
+};
 
-export interface InstanceMeta {
-  name: string;
-  baseUrl: string;
-  version: string;
-  provider?: string;
-  registrationEnabled: boolean;
-  branding: string | BrandingManifest;
-}
-
-export interface CapabilityDocument {
-  provider: string;
-  version: string;
-  features: Record<string, boolean>;
-  limits: Record<string, number>;
-}
-
-export interface Viewer {
-  id: string;
-  username: string;
-  displayName: string;
-  email?: string;
-  avatarUrl: string;
-  roles: string[];
-}
-
-export interface Session {
-  authenticated: boolean;
-  csrfToken: string;
-  expiresAt: string | null;
-  viewer: Viewer | null;
-}
-
-export interface RepositoryOwner {
-  id: string;
-  kind: 'user' | 'organization';
-  login: string;
-  avatarUrl: string;
-}
-
-export interface Repository {
-  id: string;
-  kind: 'repository';
-  owner: RepositoryOwner;
-  name: string;
-  fullName: string;
-  description: string;
-  visibility: 'public' | 'private' | 'internal';
-  defaultBranch: string;
-  empty: boolean;
-  archived: boolean;
-  language: string | null;
-  topics: string[];
-  permissions: Record<string, boolean>;
-  counts: {
-    stars: number;
-    forks: number;
-    watchers: number;
-    issues: number;
-    pullRequests: number;
-  };
-  freshness?: Freshness;
-}
-
-export interface TreeEntry {
-  name: string;
-  path: string;
-  kind: 'file' | 'directory' | 'symlink' | 'submodule';
-  sha: string;
-  size: number | null;
-}
-
-export interface GitTree {
-  sha: string;
-  ref: string;
-  path: string;
-  entries: TreeEntry[];
-  freshness?: Freshness;
-}
-
-export interface Page<T> {
-  items: T[];
-  pageInfo: {
-    startCursor: string | null;
-    endCursor: string | null;
-    hasNextPage: boolean;
-    hasPreviousPage: boolean;
-  };
-  totalCount?: number;
-}
-
-export interface ProblemDetails {
-  type: string;
-  title: string;
-  status: number;
-  code: string;
-  detail?: string;
-  instance?: string;
-  fieldErrors?: Array<{ field: string; code: string; message: string }>;
-}
+export type CacheAwareGitTree = GitTree & { freshness?: Freshness };
 
 export class ApiProblem extends Error {
   readonly problem: ProblemDetails;
@@ -169,15 +64,15 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const hubgitApi = {
   meta: () => apiFetch<InstanceMeta>('/api/v1/meta'),
-  capabilities: () => apiFetch<CapabilityDocument>('/api/v1/capabilities'),
+  capabilities: () => apiFetch<CapabilitySet>('/api/v1/capabilities'),
   session: () => apiFetch<Session>('/api/v1/auth/session'),
   repositories: (query = '') =>
-    apiFetch<Page<Repository>>(`/api/v1/repositories${query ? `?q=${encodeURIComponent(query)}` : ''}`),
+    apiFetch<RepositoryPage>(`/api/v1/repositories${query ? `?q=${encodeURIComponent(query)}` : ''}`),
   repository: (owner: string, repo: string) =>
     apiFetch<Repository>(`/api/v1/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`),
   tree: (owner: string, repo: string, ref: string, path = '') => {
     const query = path ? `?path=${encodeURIComponent(path)}` : '';
-    return apiFetch<GitTree>(
+    return apiFetch<CacheAwareGitTree>(
       `/api/v1/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tree/${encodeURIComponent(ref)}${query}`,
     );
   },
@@ -203,3 +98,4 @@ export const queryKeys = {
   tree: (owner: string, repo: string, ref: string, path = '') =>
     ['tree', owner, repo, ref, path] as const,
 };
+

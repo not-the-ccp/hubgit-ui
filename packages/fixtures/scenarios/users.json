@@ -14,7 +14,7 @@
       "followerCount": 12,
       "followingCount": 8,
       "createdAt": "2025-10-01T09:00:00Z",
-      "freshness": { "source": "origin", "fetchedAt": "2026-01-15T12:00:00Z", "expiresAt": "2026-01-15T12:05:00Z", "stale": false, "ageSeconds": 0 }
+      "freshness": { "state": "live", "lastSyncedAt": "2026-01-15T12:00:00Z", "lastAuthorizedAt": "2026-01-15T12:00:00Z", "provider": "mock" }
     },
     {
       "id": "usr_grace",
@@ -28,7 +28,7 @@
       "followerCount": 7,
       "followingCount": 12,
       "createdAt": "2025-11-11T11:30:00Z",
-      "freshness": { "source": "cache", "fetchedAt": "2026-01-15T11:58:00Z", "expiresAt": "2026-01-15T12:03:00Z", "stale": false, "ageSeconds": 120 }
+      "freshness": { "state": "refreshing", "lastSyncedAt": "2026-01-15T11:58:00Z", "lastAuthorizedAt": "2026-01-15T12:00:00Z", "provider": "mock" }
     },
     {
       "id": "usr_guest",

@@ -74,20 +74,39 @@ export type CapabilitySet = {
 };
 
 export type Freshness = {
-  "source": "origin" | "cache";
-  "fetchedAt": string;
-  "expiresAt"?: string | null;
-  "stale": boolean;
-  "ageSeconds"?: number;
+  "state": "live" | "refreshing" | "stale" | "offline";
+  "lastSyncedAt": string | null;
+  "lastAuthorizedAt": string | null;
+  "provider": string;
 };
 
 export type BrandingManifest = {
-  "preset": "hubgit" | "github-reference";
+  "preset": string;
   "productName": string;
-  "logoUrl": string;
-  "faviconUrl"?: string | null;
-  "referenceNotice": string | null;
-  "credentialNamespace"?: string;
+  "shortName": string;
+  "logoUrl": string | null;
+  "faviconUrl": string | null;
+  "titleTemplate": string;
+  "colors": {
+  "accent": string;
+  "headerBackground": string;
+  [key: string]: string;
+};
+  "authentication": {
+  "heading": string;
+  "description": string;
+  "connectLabel": string;
+};
+  "links": {
+  "privacy": string | null;
+  "terms": string | null;
+  "source": string | null;
+  "support": string | null;
+};
+  "notice": string | null;
+  "providerDisplayNames": {
+  [key: string]: string;
+};
 };
 
 export type InstanceMeta = {
@@ -129,8 +148,8 @@ export type RegisterRequest = {
 export type Session = {
   "authenticated": boolean;
   "csrfToken": string;
-  "expiresAt"?: string;
-  "viewer"?: Viewer | null;
+  "expiresAt": string | null;
+  "viewer": Viewer | null;
 };
 
 export type Viewer = User & {
