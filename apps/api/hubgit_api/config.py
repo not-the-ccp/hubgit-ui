@@ -21,11 +21,60 @@ class Settings(BaseSettings):
     environment: Literal["development", "test", "production"] = "development"
     instance_name: str = "HubGit"
     public_base_url: str = "http://localhost:8000"
-    branding: str = "hubgit"
+    brand_preset: str = "hubgit"
+    brand_name: str = "HubGit"
+    brand_short_name: str = "HubGit"
+    brand_logo_url: str | None = None
+    brand_favicon_url: str | None = "/favicon.svg"
+    brand_title_template: str = "%s · HubGit"
+    brand_primary_color: str = "#0969da"
+    brand_header_background: str = "#f6f8fa"
+    brand_auth_heading: str = "Sign in to HubGit"
+    brand_auth_explanation: str = "Provider-neutral Git collaboration for self-hosted teams."
+    brand_connect_label: str = "Continue"
+    brand_privacy_url: str | None = "/privacy"
+    brand_terms_url: str | None = "/terms"
+    brand_source_url: str | None = "https://github.com/not-the-ccp/hubgit-ui"
+    brand_support_url: str | None = None
+    brand_operator_notice: str | None = None
+    brand_provider_label: str = "GitHub"
+    provider: Literal["mock", "github"] = "mock"
     registration_enabled: bool = False
     mock_login: str = "demo"
     mock_password: str = "demo-password"
     seed_mock_user: bool = True
+
+    @property
+    def branding_manifest(self) -> dict[str, object]:
+        """Return the complete deployment branding boundary exposed to clients."""
+        return {
+            "preset": self.brand_preset,
+            "productName": self.brand_name,
+            "shortName": self.brand_short_name,
+            "logoUrl": self.brand_logo_url,
+            "faviconUrl": self.brand_favicon_url,
+            "titleTemplate": self.brand_title_template,
+            "colors": {
+                "accent": self.brand_primary_color,
+                "headerBackground": self.brand_header_background,
+            },
+            "authentication": {
+                "heading": self.brand_auth_heading,
+                "description": self.brand_auth_explanation,
+                "connectLabel": self.brand_connect_label,
+            },
+            "links": {
+                "privacy": self.brand_privacy_url,
+                "terms": self.brand_terms_url,
+                "source": self.brand_source_url,
+                "support": self.brand_support_url,
+            },
+            "notice": self.brand_operator_notice,
+            "providerDisplayNames": {
+                "mock": "Local mock",
+                "github": self.brand_provider_label,
+            },
+        }
 
     @staticmethod
     def origin_from_url(value: str) -> str:

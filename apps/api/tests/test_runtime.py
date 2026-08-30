@@ -13,7 +13,16 @@ def client(tmp_path):
 def test_health_meta_and_capabilities(tmp_path):
     with client(tmp_path) as test_client:
         assert test_client.get("/healthz").json() == {"status": "ok"}
-        assert test_client.get("/api/v1/meta").json()["branding"] == "hubgit"
+        metadata = test_client.get("/api/v1/meta").json()
+        assert metadata["branding"]["preset"] == "hubgit"
+        assert metadata["branding"]["productName"] == "HubGit"
+        assert metadata["branding"]["links"]["source"].endswith("/hubgit-ui")
+        assert test_client.get("/api/v1/auth/methods").json() == {
+            "password": True,
+            "passkey": False,
+            "twoFactor": False,
+            "providers": [],
+        }
         response = test_client.get("/api/v1/capabilities")
         assert response.json()["provider"] == "mock"
         assert response.json()["features"]["issues"] is False
@@ -153,6 +162,32 @@ def test_cookie_attributes_and_production_configuration_validation(tmp_path):
             pass
         else:
             raise AssertionError("unsafe configuration was accepted")
+
+
+def test_branding_and_provider_login_are_deployment_configurable(tmp_path):
+    configured = Settings(
+        database_url=f"sqlite+aiosqlite:///{tmp_path}/test.db",
+        brand_name="Family Forge",
+        brand_short_name="Forge",
+        brand_operator_notice="Private installation",
+        brand_provider_label="Source provider",
+        provider="github",
+    )
+    with TestClient(create_app(configured)) as test_client:
+        branding = test_client.get("/api/v1/meta").json()["branding"]
+        assert branding["productName"] == "Family Forge"
+        assert branding["shortName"] == "Forge"
+        assert branding["notice"] == "Private installation"
+        methods = test_client.get("/api/v1/auth/methods").json()
+        assert methods["password"] is False
+        assert methods["providers"] == [
+            {
+                "id": "github",
+                "displayName": "Source provider",
+                "enabled": True,
+                "supportsRegistration": True,
+            }
+        ]
 
 
 def test_unexpected_errors_do_not_disclose_provider_secrets(tmp_path):

@@ -19,7 +19,7 @@ from .config import Settings
 from .database import Database
 from .models import Session, User
 from .providers import MockRepositoryProvider, RepositoryNotFoundError, RepositoryProvider
-from .schemas import LoginInput
+from .schemas import AuthMethods, InstanceMeta, LoginInput
 from .security import ProblemError, current_session, get_db, hash_password, new_session, optional_user, require_csrf, require_user, settings, token_hash, verify_password
 
 
@@ -176,17 +176,42 @@ def create_app(config: Settings | None = None, provider: RepositoryProvider | No
             await db.execute(text("SELECT 1"))
         return {"status": "ok"}
 
-    @app.get("/api/v1/meta")
-    async def meta(config: Settings = Depends(settings)) -> dict:
-        return {"name": config.instance_name, "baseUrl": config.public_base_url, "branding": config.branding, "registrationEnabled": config.registration_enabled, "version": "0.1.0"}
+    @app.get("/api/v1/meta", response_model=InstanceMeta, response_model_by_alias=True)
+    async def meta(config: Settings = Depends(settings)) -> InstanceMeta:
+        return InstanceMeta.model_validate(
+            {
+                "name": config.instance_name,
+                "baseUrl": config.public_base_url,
+                "branding": config.branding_manifest,
+                "registrationEnabled": config.registration_enabled,
+                "version": "0.1.0",
+            }
+        )
 
     @app.get("/api/v1/capabilities")
     async def capabilities(request: Request) -> dict:
         return {"provider": request.app.state.repository_provider.provider_name, "version": "1", "features": {"issues": False, "pullRequests": False, "releases": False, "wiki": False, "discussions": False, "projects": False, "actions": False, "security": False, "insights": False, "webhooks": False, "repositoryRules": False, "serverSentEvents": False}, "limits": {"maxPageSize": 100, "maxUploadBytes": 0}}
 
-    @app.get("/api/v1/auth/methods")
-    async def auth_methods() -> dict:
-        return {"password": True, "passkey": False, "twoFactor": False}
+    @app.get("/api/v1/auth/methods", response_model=AuthMethods, response_model_by_alias=True)
+    async def auth_methods(config: Settings = Depends(settings)) -> AuthMethods:
+        providers = []
+        if config.provider == "github":
+            providers.append(
+                {
+                    "id": "github",
+                    "displayName": config.brand_provider_label,
+                    "enabled": True,
+                    "supportsRegistration": True,
+                }
+            )
+        return AuthMethods.model_validate(
+            {
+                "password": config.provider == "mock",
+                "passkey": False,
+                "twoFactor": False,
+                "providers": providers,
+            }
+        )
 
     @app.get("/api/v1/auth/session")
     async def auth_session(session: Session | None = Depends(current_session)) -> dict:

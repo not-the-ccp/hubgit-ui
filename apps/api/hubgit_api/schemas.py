@@ -7,6 +7,60 @@ class ApiModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
 
+class BrandingColors(ApiModel):
+    accent: str
+    header_background: str = Field(alias="headerBackground")
+
+
+class BrandingAuthentication(ApiModel):
+    heading: str
+    description: str
+    connect_label: str = Field(alias="connectLabel")
+
+
+class BrandingLinks(ApiModel):
+    privacy: str | None
+    terms: str | None
+    source: str | None
+    support: str | None
+
+
+class BrandingManifest(ApiModel):
+    preset: str
+    product_name: str = Field(alias="productName")
+    short_name: str = Field(alias="shortName")
+    logo_url: str | None = Field(alias="logoUrl")
+    favicon_url: str | None = Field(alias="faviconUrl")
+    title_template: str = Field(alias="titleTemplate")
+    colors: BrandingColors
+    authentication: BrandingAuthentication
+    links: BrandingLinks
+    notice: str | None
+    provider_display_names: dict[str, str] = Field(alias="providerDisplayNames")
+
+
+class InstanceMeta(ApiModel):
+    name: str
+    base_url: str = Field(alias="baseUrl")
+    branding: BrandingManifest
+    registration_enabled: bool = Field(alias="registrationEnabled")
+    version: str
+
+
+class AuthProvider(ApiModel):
+    id: str
+    display_name: str = Field(alias="displayName")
+    enabled: bool
+    supports_registration: bool = Field(alias="supportsRegistration")
+
+
+class AuthMethods(ApiModel):
+    password: bool
+    passkey: bool
+    two_factor: bool = Field(alias="twoFactor")
+    providers: list[AuthProvider]
+
+
 class LoginInput(ApiModel):
     login: str = Field(min_length=1, max_length=320)
     password: str = Field(min_length=1, max_length=256)
@@ -69,4 +123,3 @@ class SearchResult(BaseModel):
     items: list[dict[str, Any]]
     page_info: dict[str, Any] = Field(alias="pageInfo")
     total_count: int = Field(alias="totalCount")
-
