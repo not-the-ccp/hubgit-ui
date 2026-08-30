@@ -34,3 +34,11 @@ details, and Git trees into the same OpenAPI objects as the mock adapter. Expire
 user tokens rotate before a provider read. Unsupported GitHub collaboration
 operations return `capability.unsupported`, and a GitHub deployment never falls
 back to mock repository data.
+
+`hubgit-api` applies forward Alembic migrations before starting Uvicorn. The
+first migration sequence recognizes databases created by the earlier alpha
+`create_all` runtime, stamps their legacy baseline, and then adds the encrypted
+provider identity tables without deleting existing accounts or collaboration
+data. Back up the SQLite database before upgrading a deployed instance; schema
+downgrades are not an operational rollback mechanism once provider identities
+exist.

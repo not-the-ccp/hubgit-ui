@@ -1,0 +1,1 @@
+"""Versioned HubGit database schema."""

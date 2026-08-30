@@ -93,6 +93,13 @@ for the API health check, and exposes the web application on port 3000. Its
 development defaults deliberately use the mock provider and non-secure local
 cookies; production configuration validation rejects those defaults.
 
+The API container runs forward Alembic migrations before accepting traffic.
+Take an application-consistent database and data-volume backup before pulling a
+new image. The first migration-aware release recognizes the earlier unversioned
+alpha schema and preserves its users and collaboration data. Restore the prior
+backup and image together for rollback; do not downgrade a live schema after it
+has stored provider identities or credentials.
+
 ## Verification and change control
 
 Pull requests run root pnpm checks, OpenAPI validation, Python compilation/tests,

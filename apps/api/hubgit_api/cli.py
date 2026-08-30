@@ -6,7 +6,9 @@ import argparse
 
 import uvicorn
 
+from .config import Settings
 from .main import create_app
+from .migrate import upgrade_database
 
 
 def main() -> None:
@@ -15,6 +17,7 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--reload", action="store_true")
     args = parser.parse_args()
+    upgrade_database(Settings())
     if args.reload:
         uvicorn.run("hubgit_api.main:app", host=args.host, port=args.port, reload=True)
     else:
