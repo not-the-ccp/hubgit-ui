@@ -10,6 +10,7 @@ import {
 } from 'react-router';
 
 import './globals.css';
+import { AppProviders } from './providers';
 
 export const links = () => [
   { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
@@ -42,7 +43,7 @@ export function Layout({ children }: { children: ReactNode }) {
 }
 
 export default function Root() {
-  return <Outlet />;
+  return <AppProviders><Outlet /></AppProviders>;
 }
 
 export function ErrorBoundary() {
@@ -61,4 +62,3 @@ export function ErrorBoundary() {
     </main>
   );
 }
-
