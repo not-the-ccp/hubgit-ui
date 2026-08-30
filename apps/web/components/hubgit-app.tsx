@@ -1,6 +1,7 @@
 'use client';
 
 import { SyntheticEvent, useState } from 'react';
+import type { BrandingManifest, Freshness } from '@hubgit/contracts';
 import {
   AlertIcon,
   BellIcon,
@@ -22,8 +23,6 @@ import {
   IssueOpenedIcon,
   KebabHorizontalIcon,
   LinkExternalIcon,
-  MarkGithubIcon,
-  MarkGithubIcon as HubMarkIcon,
   MoonIcon,
   OrganizationIcon,
   PencilIcon,
@@ -42,18 +41,6 @@ import {
   TagIcon,
   XCircleFillIcon,
 } from '@primer/octicons-react';
-
-/** Provider-neutral visual and authentication configuration for a HubGit instance. */
-export type BrandingManifest = {
-  id: string;
-  name: string;
-  wordmark: string;
-  shortName: string;
-  description: string;
-  markLabel: string;
-  auth: AuthProfile;
-  referenceWarning?: boolean;
-};
 
 export type AuthProfile = {
   id: 'mock-local' | 'github-provider';
@@ -76,30 +63,55 @@ export const GITHUB_PROVIDER_AUTH_PROFILE: AuthProfile = {
   label: 'GitHub provider',
   mode: 'provider',
   providerName: 'GitHub',
-  authorizationPath: '/auth/github/start?returnTo=%2Fdashboard',
+  authorizationPath:
+    '/api/v1/auth/providers/github/start?returnTo=%2Fdashboard',
 };
 
 export const HUBGIT_BRANDING: BrandingManifest = {
-  id: 'hubgit',
-  name: 'HubGit',
-  wordmark: 'HubGit',
+  preset: 'hubgit',
+  productName: 'HubGit',
   shortName: 'HubGit',
-  description: 'Provider-neutral Git collaboration for self-hosted teams.',
-  markLabel: 'HubGit home',
-  auth: MOCK_LOCAL_AUTH_PROFILE,
+  logoUrl: null,
+  faviconUrl: '/favicon.svg',
+  titleTemplate: '%s · HubGit',
+  colors: { accent: '#0969da', headerBackground: '#f6f8fa' },
+  authentication: {
+    heading: 'Sign in to HubGit',
+    description: 'Provider-neutral Git collaboration for self-hosted teams.',
+    connectLabel: 'Continue',
+  },
+  links: {
+    privacy: '/privacy',
+    terms: '/terms',
+    source: 'https://github.com/not-the-ccp/hubgit-ui',
+    support: null,
+  },
+  notice: null,
+  providerDisplayNames: { mock: 'Local mock', github: 'GitHub' },
 };
 
-/** Educational reference preset; it intentionally keeps the provider boundary explicit. */
+/** Clean-room visual reference that operators may customize further. */
 export const GITHUB_REFERENCE_BRANDING: BrandingManifest = {
-  id: 'github-reference',
-  name: 'GitHub reference',
-  wordmark: 'GitHub',
-  shortName: 'GitHub reference',
-  description:
-    'A HubGit educational reference surface with a GitHub provider adapter.',
-  markLabel: 'HubGit GitHub reference home',
-  auth: GITHUB_PROVIDER_AUTH_PROFILE,
-  referenceWarning: true,
+  preset: 'github-reference',
+  productName: 'GitHub',
+  shortName: 'GitHub',
+  logoUrl: null,
+  faviconUrl: '/favicon.svg',
+  titleTemplate: '%s · GitHub',
+  colors: { accent: '#0969da', headerBackground: '#f6f8fa' },
+  authentication: {
+    heading: 'Sign in',
+    description: 'Connect this private installation to your GitHub account.',
+    connectLabel: 'Continue with GitHub',
+  },
+  links: {
+    privacy: '/privacy',
+    terms: '/terms',
+    source: 'https://github.com/not-the-ccp/hubgit-ui',
+    support: null,
+  },
+  notice: null,
+  providerDisplayNames: { mock: 'Local mock', github: 'GitHub' },
 };
 
 export const BRANDING_PRESETS = {
@@ -198,9 +210,13 @@ const navPath = (suffix = '') =>
 export function HubGitApp({
   initialPath = '/',
   initialBranding = DEFAULT_BRANDING_MANIFEST,
+  authProfile = MOCK_LOCAL_AUTH_PROFILE,
+  freshness,
 }: {
   initialPath?: string;
   initialBranding?: BrandingManifest;
+  authProfile?: AuthProfile;
+  freshness?: Freshness;
 }) {
   const [branding, setBranding] = useState<BrandingManifest>(initialBranding);
   const [viewer, setViewer] = useState<Viewer>(
@@ -223,6 +239,7 @@ export function HubGitApp({
       <AuthPage
         mode={path.slice(1)}
         branding={branding}
+        authProfile={authProfile}
         setBranding={setBranding}
         onLogin={() => setViewer('member')}
       />
@@ -239,14 +256,20 @@ export function HubGitApp({
         dark={dark}
         setDark={setDark}
       />
-      <output className="state-banner stale-banner" aria-live="polite">
-        <AlertIcon size={16} />
-        <span>
-          <strong>Offline preview</strong> · showing cached repository data from
-          2 minutes ago.
-        </span>
-        <button type="button">Retry</button>
-      </output>
+      {freshness && freshness.state !== 'live' ? (
+        <output className="state-banner stale-banner" aria-live="polite">
+          <AlertIcon size={16} />
+          <span>
+            <strong>
+              {freshness.state === 'offline' ? 'Offline' : 'Cached data'}
+            </strong>
+            {freshness.lastSyncedAt
+              ? ` · last synchronized ${new Date(freshness.lastSyncedAt).toLocaleString()}`
+              : ' · synchronization time unavailable'}
+          </span>
+          <button type="button">Retry</button>
+        </output>
+      ) : null}
       {path === '/' || path === '/dashboard' ? <Dashboard /> : null}
       {path === '/issues' ? <GlobalQueue title="Issues" kind="issue" /> : null}
       {path === '/pulls' ? (
@@ -267,13 +290,18 @@ export function HubGitApp({
         <RepositoryShell path={path} viewer={viewer} />
       ) : null}
       <footer className="site-footer">
-        <HubMarkIcon size={24} />
-        <span>© 2026 HubGit contributors</span>
-        <a href="/">Terms</a>
-        <a href="/">Privacy</a>
-        <a href="/">Docs</a>
-        <a href="/">API</a>
-        <a href="/">Status</a>
+        <GitBranchIcon size={24} />
+        <span>© 2026 {branding.productName} contributors</span>
+        {branding.links.terms ? <a href={branding.links.terms}>Terms</a> : null}
+        {branding.links.privacy ? (
+          <a href={branding.links.privacy}>Privacy</a>
+        ) : null}
+        {branding.links.source ? (
+          <a href={branding.links.source}>Source</a>
+        ) : null}
+        {branding.links.support ? (
+          <a href={branding.links.support}>Support</a>
+        ) : null}
       </footer>
     </div>
   );
@@ -312,11 +340,19 @@ function GlobalHeader({
           <span />
           <span />
         </button>
-        <a className="brand-mark" href="/" aria-label={branding.markLabel}>
-          <MarkGithubIcon size={32} />
+        <a
+          className="brand-mark"
+          href="/"
+          aria-label={`${branding.productName} home`}
+        >
+          {branding.logoUrl ? (
+            <img src={branding.logoUrl} alt="" width={32} height={32} />
+          ) : (
+            <GitBranchIcon size={28} />
+          )}
         </a>
         <a className="product-wordmark" href="/">
-          {branding.wordmark}
+          {branding.productName}
         </a>
       </div>
       <div className="header-actions">
@@ -370,15 +406,17 @@ function GlobalHeader({
 function AuthPage({
   mode,
   branding,
+  authProfile,
   setBranding,
   onLogin,
 }: {
   mode: string;
   branding: BrandingManifest;
+  authProfile: AuthProfile;
   setBranding: (v: BrandingManifest) => void;
   onLogin: () => void;
 }) {
-  const isProvider = branding.auth.mode === 'provider';
+  const isProvider = authProfile.mode === 'provider';
   const title =
     mode === 'join'
       ? 'Create your account'
@@ -388,7 +426,7 @@ function AuthPage({
           ? 'Two-factor authentication'
           : mode === 'verify'
             ? 'Verify your email'
-            : `Sign in to ${branding.name}`;
+            : branding.authentication.heading;
   const submit = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     onLogin();
@@ -396,43 +434,44 @@ function AuthPage({
   };
   return (
     <main className="auth-page">
-      {branding.referenceWarning && (
+      {branding.notice && (
         <div className="reference-warning" role="note">
           <AlertIcon size={24} />
           <div>
-            <strong>THIS IS NOT GITHUB</strong>
-            <span>
-              Educational HubGit clone. Credentials are local to this demo and
-              are never sent to GitHub.
-            </span>
+            <strong>Operator notice</strong>
+            <span>{branding.notice}</span>
           </div>
         </div>
       )}
       <div className="auth-brand">
-        <MarkGithubIcon size={48} />
-        <strong>{branding.name}</strong>
-        <span>{branding.description}</span>
+        {branding.logoUrl ? (
+          <img src={branding.logoUrl} alt="" width={48} height={48} />
+        ) : (
+          <GitBranchIcon size={48} />
+        )}
+        <strong>{branding.productName}</strong>
+        <span>{branding.authentication.description}</span>
       </div>
       <section className="auth-card">
         <h1>{title}</h1>
         {isProvider ? (
           <div className="provider-auth">
             <p>
-              Use your configured {branding.auth.providerName} account to
+              Use your configured {authProfile.providerName} account to
               authorize this HubGit instance. You will be redirected to the
               provider&apos;s authorization page.
             </p>
             <p className="privacy-copy">
               HubGit does not ask for, see, or store your{' '}
-              {branding.auth.providerName} password, token, passkey, or recovery
+              {authProfile.providerName} password, token, passkey, or recovery
               code.
             </p>
             <a
               className="primary-button wide"
-              href={branding.auth.authorizationPath}
-              aria-label={`Continue with ${branding.auth.providerName}`}
+              href={authProfile.authorizationPath}
+              aria-label={branding.authentication.connectLabel}
             >
-              Continue with {branding.auth.providerName}
+              {branding.authentication.connectLabel}
             </a>
           </div>
         ) : mode === 'verify' ? (
@@ -504,7 +543,7 @@ function AuthPage({
       <div className="auth-secondary">
         {mode === 'login' ? (
           <>
-            New to {branding.name}? <a href="/join">Create an account</a>
+            New to {branding.productName}? <a href="/join">Create an account</a>
           </>
         ) : (
           <a href="/login">Return to sign in</a>
@@ -515,13 +554,13 @@ function AuthPage({
         type="button"
         onClick={() =>
           setBranding(
-            branding.id === 'hubgit'
+            branding.preset === 'hubgit'
               ? GITHUB_REFERENCE_BRANDING
               : HUBGIT_BRANDING,
           )
         }
       >
-        Preview {branding.id === 'hubgit' ? 'GitHub reference' : 'HubGit'}{' '}
+        Preview {branding.preset === 'hubgit' ? 'GitHub reference' : 'HubGit'}{' '}
         branding
       </button>
     </main>
@@ -790,7 +829,7 @@ function Readme() {
       </div>
       <div className="readme-content">
         <div className="product-logo">
-          <MarkGithubIcon size={38} />
+          <GitBranchIcon size={38} />
           <span>HubGit</span>
         </div>
         <h2>HubGit UI</h2>

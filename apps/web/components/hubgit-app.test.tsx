@@ -10,10 +10,22 @@ describe('HubGit authentication presentation', () => {
     );
     expect(source).toContain("id: 'github-provider'");
     expect(source).toContain(
-      "authorizationPath: '/auth/github/start?returnTo=%2Fdashboard'",
+      "'/api/v1/auth/providers/github/start?returnTo=%2Fdashboard'",
     );
-    expect(source).toContain('Continue with {branding.auth.providerName}');
+    expect(source).toContain('{branding.authentication.connectLabel}');
     expect(source).toContain('HubGit does not ask for, see, or store');
     expect(source).not.toContain('GitHub password');
+  });
+
+  it('uses the generated deployment branding boundary and conditional freshness', () => {
+    const source = readFileSync(
+      resolve(import.meta.dirname, 'hubgit-app.tsx'),
+      'utf8',
+    );
+    expect(source).toContain(
+      "import type { BrandingManifest, Freshness } from '@hubgit/contracts'",
+    );
+    expect(source).toContain("freshness.state !== 'live'");
+    expect(source).not.toContain('referenceWarning');
   });
 });
