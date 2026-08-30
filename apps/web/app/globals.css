@@ -170,7 +170,10 @@ kbd {
   display: flex;
   gap: 4px;
   padding: 0 16px;
-  min-width: max-content;
+  width: 100%;
+  min-width: 0;
+  max-width: 100vw;
+  box-sizing: border-box;
 }
 .repo-tab {
   position: relative;
