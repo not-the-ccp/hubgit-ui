@@ -1,0 +1,31 @@
+{
+  "scenario": "failure-states",
+  "asOf": "2026-01-15T12:00:00Z",
+  "cases": [
+    {
+      "name": "unauthenticated-viewer",
+      "status": 401,
+      "problem": { "type": "https://hubgit.example/problems/authentication-required", "title": "Authentication required", "status": 401, "code": "auth.required", "traceId": "trace_401_viewer" }
+    },
+    {
+      "name": "hidden-private-repository",
+      "status": 404,
+      "problem": { "type": "https://hubgit.example/problems/repository-not-found", "title": "Repository not found", "status": 404, "code": "repository.not_found", "traceId": "trace_404_private" }
+    },
+    {
+      "name": "stale-settings-etag",
+      "status": 412,
+      "problem": { "type": "https://hubgit.example/problems/precondition-failed", "title": "Precondition failed", "status": 412, "detail": "The resource changed since it was read.", "code": "request.etag_mismatch", "traceId": "trace_412_etag" }
+    },
+    {
+      "name": "idempotency-key-reuse",
+      "status": 409,
+      "problem": { "type": "https://hubgit.example/problems/idempotency-conflict", "title": "Idempotency conflict", "status": 409, "detail": "The key was already used with a different request.", "code": "request.idempotency_conflict", "traceId": "trace_409_idempotency" }
+    },
+    {
+      "name": "invalid-repository-input",
+      "status": 422,
+      "problem": { "type": "https://hubgit.example/problems/validation-failed", "title": "Validation failed", "status": 422, "code": "request.invalid", "fieldErrors": [{ "field": "name", "code": "required", "message": "Name is required." }], "traceId": "trace_422_validation" }
+    }
+  ]
+}

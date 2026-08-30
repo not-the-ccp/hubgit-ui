@@ -1,0 +1,47 @@
+{
+  "scenario": "users",
+  "asOf": "2026-01-15T12:00:00Z",
+  "items": [
+    {
+      "id": "usr_ada",
+      "kind": "user",
+      "username": "ada",
+      "displayName": "Ada Lovelace",
+      "avatarUrl": "/avatars/ada.png",
+      "profileUrl": "/ada",
+      "bio": "Maintains numerical experiments.",
+      "location": "London",
+      "followerCount": 12,
+      "followingCount": 8,
+      "createdAt": "2025-10-01T09:00:00Z",
+      "freshness": { "source": "origin", "fetchedAt": "2026-01-15T12:00:00Z", "expiresAt": "2026-01-15T12:05:00Z", "stale": false, "ageSeconds": 0 }
+    },
+    {
+      "id": "usr_grace",
+      "kind": "user",
+      "username": "grace",
+      "displayName": "Grace Hopper",
+      "avatarUrl": "/avatars/grace.png",
+      "profileUrl": "/grace",
+      "bio": null,
+      "location": "Arlington",
+      "followerCount": 7,
+      "followingCount": 12,
+      "createdAt": "2025-11-11T11:30:00Z",
+      "freshness": { "source": "cache", "fetchedAt": "2026-01-15T11:58:00Z", "expiresAt": "2026-01-15T12:03:00Z", "stale": false, "ageSeconds": 120 }
+    },
+    {
+      "id": "usr_guest",
+      "kind": "user",
+      "username": "guest",
+      "displayName": "Guest Viewer",
+      "avatarUrl": "/avatars/guest.png",
+      "profileUrl": "/guest",
+      "bio": null,
+      "location": null,
+      "followerCount": 0,
+      "followingCount": 0,
+      "createdAt": "2026-01-15T00:00:00Z"
+    }
+  ]
+}

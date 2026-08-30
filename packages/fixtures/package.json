@@ -3,7 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "validate": "node scripts/validate.mjs",
+    "test": "node --test scripts/*.test.mjs"
+  },
   "files": [
-    "scenarios"
+    "scenarios",
+    "schemas"
   ]
 }
