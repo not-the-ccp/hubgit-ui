@@ -22,9 +22,8 @@ describe('HubGit authentication presentation', () => {
       resolve(import.meta.dirname, 'hubgit-app.tsx'),
       'utf8',
     );
-    expect(source).toContain(
-      "import type { BrandingManifest, Freshness } from '@hubgit/contracts'",
-    );
+    expect(source).toContain('BrandingManifest');
+    expect(source).toContain("from '@hubgit/contracts'");
     expect(source).toContain("freshness.state !== 'live'");
     expect(source).not.toContain('referenceWarning');
   });

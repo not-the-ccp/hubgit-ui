@@ -1,7 +1,12 @@
 'use client';
 
 import { SyntheticEvent, useState } from 'react';
-import type { BrandingManifest, Freshness } from '@hubgit/contracts';
+import type {
+  BrandingManifest,
+  Freshness,
+  GitTree,
+  Repository,
+} from '@hubgit/contracts';
 import { hubgitApi } from '../app/lib/api-client';
 import {
   AlertIcon,
@@ -123,6 +128,11 @@ export const BRANDING_PRESETS = {
 export const DEFAULT_BRANDING_MANIFEST = HUBGIT_BRANDING;
 type Viewer = 'guest' | 'member' | 'admin';
 
+export type RepositoryViewData = {
+  repository: Repository;
+  tree: GitTree;
+};
+
 const repoTabs = [
   ['Code', '', CodeIcon],
   ['Issues', 'issues', IssueOpenedIcon, '12'],
@@ -213,11 +223,13 @@ export function HubGitApp({
   initialBranding = DEFAULT_BRANDING_MANIFEST,
   authProfile = MOCK_LOCAL_AUTH_PROFILE,
   freshness,
+  repositoryView,
 }: {
   initialPath?: string;
   initialBranding?: BrandingManifest;
   authProfile?: AuthProfile;
   freshness?: Freshness;
+  repositoryView?: RepositoryViewData;
 }) {
   const [branding, setBranding] = useState<BrandingManifest>(initialBranding);
   const [viewer, setViewer] = useState<Viewer>(
@@ -288,7 +300,11 @@ export function HubGitApp({
       ) : null}
       {isRepoPath(path) &&
       !path.startsWith('/not-the-ccp/hubgit-ui/settings') ? (
-        <RepositoryShell path={path} viewer={viewer} />
+        <RepositoryShell
+          path={path}
+          viewer={viewer}
+          repositoryView={repositoryView}
+        />
       ) : null}
       <footer className="site-footer">
         <GitBranchIcon size={24} />
@@ -309,9 +325,11 @@ export function HubGitApp({
 }
 
 function isRepoPath(path: string) {
-  return (
-    path === '/not-the-ccp/hubgit-ui' ||
-    path.startsWith('/not-the-ccp/hubgit-ui/')
+  const [first, second] = path.split('/').filter(Boolean);
+  return Boolean(
+    first &&
+    second &&
+    !['orgs', 'settings', 'search', 'auth', 'login', 'join'].includes(first),
   );
 }
 
@@ -710,31 +728,48 @@ function FeedCard({
   );
 }
 
-function RepositoryShell({ path, viewer }: { path: string; viewer: Viewer }) {
-  const suffix = path.replace('/not-the-ccp/hubgit-ui', '').replace(/^\//, '');
+function RepositoryShell({
+  path,
+  viewer,
+  repositoryView,
+}: {
+  path: string;
+  viewer: Viewer;
+  repositoryView?: RepositoryViewData;
+}) {
+  const repository = repositoryView?.repository;
+  const fullName = repository?.fullName ?? 'not-the-ccp/hubgit-ui';
+  const [owner, name] = fullName.split('/');
+  const basePath = `/${fullName}`;
+  const suffix = path.replace(basePath, '').replace(/^\//, '');
   const active = suffix.split('/')[0];
   return (
     <>
       <div className="repo-subheader page-width">
         <div className="repo-title">
           <RepoIcon size={18} />
-          <a href={navPath()}>
-            <strong>not-the-ccp</strong> / <strong>hubgit-ui</strong>
+          <a href={basePath}>
+            <strong>{owner}</strong> / <strong>{name}</strong>
           </a>
-          <span className="visibility">Public</span>
+          <span className="visibility">
+            {repository
+              ? repository.visibility[0].toUpperCase() +
+                repository.visibility.slice(1)
+              : 'Public'}
+          </span>
         </div>
         <div className="repo-actions">
           <button>
             <EyeIcon size={16} />
-            Watch <b>3</b>
+            Watch <b>{repository?.counts.watchers ?? 3}</b>
           </button>
           <button>
             <RepoForkedIcon size={16} />
-            Fork <b>0</b>
+            Fork <b>{repository?.counts.forks ?? 0}</b>
           </button>
           <button>
             <StarIcon size={16} />
-            Star <b>18</b>
+            Star <b>{repository?.counts.stars ?? 18}</b>
           </button>
         </div>
       </div>
@@ -746,7 +781,7 @@ function RepositoryShell({ path, viewer }: { path: string; viewer: Viewer }) {
                 ? 'repo-tab active'
                 : 'repo-tab'
             }
-            href={navPath(segment)}
+            href={`${basePath}${segment ? `/${segment}` : ''}`}
             key={label}
           >
             <Icon size={16} />
@@ -756,7 +791,9 @@ function RepositoryShell({ path, viewer }: { path: string; viewer: Viewer }) {
         ))}
       </nav>
       <main className="repo-page page-width">
-        {!active && <CodeView />}
+        {!active && (
+          <CodeView repositoryView={repositoryView} basePath={basePath} />
+        )}
         {active === 'issues' &&
           (suffix.match(/^issues\/\d+/) ? <IssueDetail /> : <IssueList />)}
         {active === 'pulls' &&
@@ -782,22 +819,48 @@ function RepositoryShell({ path, viewer }: { path: string; viewer: Viewer }) {
   );
 }
 
-function CodeView() {
+function CodeView({
+  repositoryView,
+  basePath,
+}: {
+  repositoryView?: RepositoryViewData;
+  basePath: string;
+}) {
+  const repository = repositoryView?.repository;
+  const tree = repositoryView?.tree;
+  const commit = tree?.commit;
+  const displayedFiles = tree
+    ? tree.entries.map((entry) => ({
+        name: entry.name,
+        path: entry.path,
+        message: entry.lastCommit?.message ?? commit?.message ?? 'Update file',
+        age: entry.lastCommit?.authoredAt
+          ? new Date(entry.lastCommit.authoredAt).toLocaleDateString()
+          : 'recently',
+        folder: entry.kind === 'directory',
+      }))
+    : files.map(([name, message, age, folder]) => ({
+        name,
+        path: name,
+        message,
+        age,
+        folder: Boolean(folder),
+      }));
   return (
     <div className="repo-grid">
       <section>
         <div className="content-toolbar">
           <button className="branch-button">
             <GitBranchIcon size={16} />
-            <strong>main</strong>
+            <strong>{repository?.defaultBranch ?? 'main'}</strong>
             <ChevronDownIcon size={12} />
           </button>
           <div className="ref-links">
-            <a href={navPath('branches')}>
+            <a href={`${basePath}/branches`}>
               <GitBranchIcon size={16} />
               <strong>3</strong> Branches
             </a>
-            <a href={navPath('tags')}>
+            <a href={`${basePath}/tags`}>
               <TagIcon size={16} />
               <strong>2</strong> Tags
             </a>
@@ -814,16 +877,27 @@ function CodeView() {
         <div className="file-panel">
           <div className="latest-commit">
             <div className="avatar small">M</div>
-            <strong>not-the-ccp</strong>
-            <a className="commit-message" href={navPath('commit/a21bd77')}>
-              Build the first complete HubGit product slice
+            <strong>{repository?.owner.login ?? 'not-the-ccp'}</strong>
+            <a
+              className="commit-message"
+              href={`${basePath}/commit/${commit?.sha ?? 'a21bd77'}`}
+            >
+              {commit?.message ??
+                'Build the first complete HubGit product slice'}
             </a>
-            <span>a21bd77 · 2 hours ago</span>
-            <a href={navPath('commits/main')}>
+            <span>
+              {commit?.shortSha ?? 'a21bd77'} ·{' '}
+              {commit?.authoredAt
+                ? new Date(commit.authoredAt).toLocaleDateString()
+                : '2 hours ago'}
+            </span>
+            <a
+              href={`${basePath}/commits/${repository?.defaultBranch ?? 'main'}`}
+            >
               <HistoryIcon size={16} /> 24 commits
             </a>
           </div>
-          {files.map(([name, message, age, folder]) => (
+          {displayedFiles.map(({ name, path, message, age, folder }) => (
             <div className="file-row" key={name}>
               <div className="file-name">
                 {folder ? (
@@ -834,8 +908,8 @@ function CodeView() {
                 <a
                   href={
                     folder
-                      ? navPath(`tree/main/${name}`)
-                      : navPath(`blob/main/${name}`)
+                      ? `${basePath}/tree/${repository?.defaultBranch ?? 'main'}/${path}`
+                      : `${basePath}/blob/${repository?.defaultBranch ?? 'main'}/${path}`
                   }
                 >
                   {name}
@@ -850,7 +924,7 @@ function CodeView() {
         </div>
         <Readme />
       </section>
-      <RepoSidebar />
+      <RepoSidebar repository={repository} basePath={basePath} />
     </div>
   );
 }
@@ -892,14 +966,20 @@ function Readme() {
   );
 }
 
-function RepoSidebar() {
+function RepoSidebar({
+  repository,
+  basePath,
+}: {
+  repository?: Repository;
+  basePath: string;
+}) {
   return (
     <aside className="repo-sidebar">
       <section>
         <h2>About</h2>
         <p>
-          A clean-room GitHub-style frontend backed by a generic API and
-          stateful mock server.
+          {repository?.description ??
+            'A clean-room GitHub-style frontend backed by a generic API and stateful mock server.'}
         </p>
         <a href="/">
           hubgit-ui.dev <LinkExternalIcon size={12} />
@@ -913,7 +993,7 @@ function RepoSidebar() {
       </section>
       <section>
         <h2>Releases</h2>
-        <a href={navPath('releases')}>
+        <a href={`${basePath}/releases`}>
           <strong>HubGit preview 0.1.0</strong>
           <br />
           <small>Latest · yesterday</small>
@@ -926,7 +1006,7 @@ function RepoSidebar() {
           <span />
           <span />
         </div>
-        <p>TypeScript 62.4% · Python 35.1% · CSS 2.5%</p>
+        <p>{repository?.language ?? 'Mixed languages'}</p>
       </section>
     </aside>
   );
