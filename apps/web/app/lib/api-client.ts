@@ -67,9 +67,13 @@ export const hubgitApi = {
   capabilities: () => apiFetch<CapabilitySet>('/api/v1/capabilities'),
   session: () => apiFetch<Session>('/api/v1/auth/session'),
   repositories: (query = '') =>
-    apiFetch<RepositoryPage>(`/api/v1/repositories${query ? `?q=${encodeURIComponent(query)}` : ''}`),
+    apiFetch<RepositoryPage>(
+      `/api/v1/repositories${query ? `?q=${encodeURIComponent(query)}` : ''}`,
+    ),
   repository: (owner: string, repo: string) =>
-    apiFetch<Repository>(`/api/v1/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`),
+    apiFetch<Repository>(
+      `/api/v1/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
+    ),
   tree: (owner: string, repo: string, ref: string, path = '') => {
     const query = path ? `?path=${encodeURIComponent(path)}` : '';
     return apiFetch<CacheAwareGitTree>(
@@ -94,8 +98,8 @@ export const queryKeys = {
   capabilities: ['capabilities'] as const,
   session: ['session'] as const,
   repositories: (query = '') => ['repositories', query] as const,
-  repository: (owner: string, repo: string) => ['repository', owner, repo] as const,
+  repository: (owner: string, repo: string) =>
+    ['repository', owner, repo] as const,
   tree: (owner: string, repo: string, ref: string, path = '') =>
     ['tree', owner, repo, ref, path] as const,
 };
-

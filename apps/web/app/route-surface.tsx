@@ -6,4 +6,3 @@ export function RouteSurface() {
   const location = useLocation();
   return <HubGitApp initialPath={location.pathname} />;
 }
-

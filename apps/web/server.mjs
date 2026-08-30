@@ -33,4 +33,3 @@ app.all(
 app.listen(port, '0.0.0.0', () => {
   console.log(`HubGit web listening on http://0.0.0.0:${port}`);
 });
-

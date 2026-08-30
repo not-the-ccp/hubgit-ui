@@ -43,7 +43,11 @@ export function Layout({ children }: { children: ReactNode }) {
 }
 
 export default function Root() {
-  return <AppProviders><Outlet /></AppProviders>;
+  return (
+    <AppProviders>
+      <Outlet />
+    </AppProviders>
+  );
 }
 
 export function ErrorBoundary() {
@@ -57,8 +61,13 @@ export function ErrorBoundary() {
     <main className="error-page">
       <span className="error-code">{status}</span>
       <h1>{message}</h1>
-      <p>The route may be unavailable, unsupported by the provider, or temporarily offline.</p>
-      <a className="primary-button" href="/dashboard">Return to HubGit</a>
+      <p>
+        The route may be unavailable, unsupported by the provider, or
+        temporarily offline.
+      </p>
+      <a className="primary-button" href="/dashboard">
+        Return to HubGit
+      </a>
     </main>
   );
 }
