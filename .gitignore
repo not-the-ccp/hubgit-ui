@@ -3,6 +3,7 @@ node_modules/
 .venv/
 __pycache__/
 *.py[cod]
+*.tsbuildinfo
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -11,6 +12,7 @@ coverage/
 dist/
 build/
 .next/
+.react-router/
 .vinext/
 .wrangler/
 .data/
@@ -23,4 +25,3 @@ build/
 playwright-report/
 test-results/
 storybook-static/
-
